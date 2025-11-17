@@ -80,85 +80,521 @@ const char* html_page = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ninebot ES Controller</title>
   <style>
-    body { font-family: Arial; margin: 20px; }
-    .button { 
-      background: #4CAF50; color: white; border: none; padding: 10px 15px; 
-      margin: 5px; border-radius: 5px; cursor: pointer; 
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .lock { background: #f44336; }
-    .unlock { background: #4CAF50; }
-    .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
-    .locked { background: #ffebee; color: #c62828; border: 1px solid #c62828; }
-    .unlocked { background: #e8f5e8; color: #2e7d32; border: 1px solid #2e7d32; }
-  </style>
-</head>
-<body>
-  <h1>🚀 Ninebot ES Controller</h1>
-  
-  <div class="status" id="status">Загрузка...</div>
-  
-  <div>
-    <button class="button unlock" onclick="sendCommand('unlock')">🔓 Разблокировать</button>
-    <button class="button lock" onclick="sendCommand('lock')">🔒 Заблокировать</button>
-  </div>
-  
-  <div>
-    <h3>Режимы работы:</h3>
-    <button class="button" onclick="sendCommand('mode_normal')">NORMAL</button>
-    <button class="button" onclick="sendCommand('mode_eco')">ECO</button>
-    <button class="button" onclick="sendCommand('mode_sport')">SPORT</button>
-  </div>
-  
-  <div>
-    <h3>Ограничение скорости:</h3>
-    <button class="button" onclick="sendCommand('speed_15')">15 км/ч</button>
-    <button class="button" onclick="sendCommand('speed_20')">20 км/ч</button>
-    <button class="button" onclick="sendCommand('speed_25')">25 км/ч</button>
-    <button class="button" onclick="sendCommand('speed_30')">30 км/ч</button>
-  </div>
-  
-  <div>
-    <h3>Управление:</h3>
-    <button class="button" onclick="sendCommand('headlight_toggle')" id="headlightBtn">Фары ВКЛ</button>
-    <button class="button" onclick="sendCommand('beep_toggle')" id="beepBtn">🔊 Звук ВКЛ</button>
-    <button class="button" onclick="sendCommand('cruise_toggle')" id="cruiseBtn">⏱️ Круиз ОТКЛ</button>
-  </div>
 
-  <script>
-    function updateStatus(isLocked) {
-      const status = document.getElementById('status');
-      if (isLocked) {
-        status.innerHTML = '🔒 Статус: ЗАБЛОКИРОВАН';
-        status.className = 'status locked';
-      } else {
-        status.innerHTML = '🔓 Статус: РАЗБЛОКИРОВАН';
-        status.className = 'status unlocked';
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    }
+
+    .status-card {
+      text-align: center;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+    }
+
+    .status-card.unlocked {
+      background: linear-gradient(135deg, #00b894, #00a085);
+    }
+
+    .status-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .status-text {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .data-item {
+      text-align: center;
+      padding: 15px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+    }
+
+    .data-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: white;
+    }
+
+    .data-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+      color: white;
+    }
+
+    .control-section {
+      margin-bottom: 25px;
+    }
+
+    .section-title {
+      color: white;
+      margin-bottom: 15px;
+      font-size: 1.3rem;
+      border-left: 4px solid #ff6b6b;
+      padding-left: 15px;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 15px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #00b894, #00a085);
+      color: white;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ff7675, #d63031);
+      color: white;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #fdcb6e, #e17055);
+      color: white;
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+      color: white;
+    }
+
+    .btn-toggle {
+      background: linear-gradient(135deg, #dfe6e9, #b2bec3);
+      color: #2d3436;
+    }
+
+    .btn-active {
+      background: linear-gradient(135deg, #00cec9, #00b894);
+      color: white;
+    }
+
+    .toggle-group {
+      display: flex;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 5px;
+      gap: 5px;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-btn.active {
+      background: #ff6b6b;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      background: #00b894;
+      color: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.error {
+      background: #d63031;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .button-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      }
+
+      .btn {
+        padding: 12px 15px;
+        font-size: 0.9rem;
+      }
+
+      .data-value {
+        font-size: 1.5rem;
       }
     }
 
-    function sendCommand(cmd) {
-      fetch('/' + cmd)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            if (data.isLocked !== undefined) {
-              updateStatus(data.isLocked);
-            }
-            alert(data.message);
-          } else {
-            alert('Ошибка: ' + data.message);
-          }
-        });
+    @media (max-width: 480px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .button-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .data-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Шапка -->
+    <div class="header">
+      <h1>🚀 Ninebot ES Controller</h1>
+      <p>Управление вашим самокатом через веб-интерфейс</p>
+    </div>
+
+    <!-- Основная панель -->
+    <div class="dashboard">
+      <!-- Карточка статуса -->
+      <div class="card status-card" id="statusCard">
+        <div class="status-icon">🔒</div>
+        <div class="status-text" id="statusText">ЗАБЛОКИРОВАН</div>
+        <div class="status-subtext" id="statusSubtext">Самокат заблокирован</div>
+        
+        <div class="data-grid">
+          <div class="data-item">
+            <div class="data-value" id="batteryValue">0%</div>
+            <div class="data-label">Батарея</div>
+          </div>
+          <div class="data-item">
+            <div class="data-value" id="speedValue">0</div>
+            <div class="data-label">км/ч</div>
+          </div>
+          <div class="data-item">
+            <div class="data-value" id="tempValue">0°</div>
+            <div class="data-label">Температура</div>
+          </div>
+          <div class="data-item">
+            <div class="data-value" id="mileageValue">0</div>
+            <div class="data-label">км</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Быстрое управление -->
+      <div class="card">
+        <h3>⚡ Быстрое управление</h3>
+        <div class="button-grid" style="margin-top: 20px;">
+          <button class="btn btn-success" onclick="sendCommand('unlock')">
+            <span>🔓</span> Разблокировать
+          </button>
+          <button class="btn btn-danger" onclick="sendCommand('lock')">
+            <span>🔒</span> Заблокировать
+          </button>
+          <button class="btn btn-primary" onclick="toggleDataRefresh()" id="refreshBtn">
+            <span>🔄</span> Автообновление
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Управление режимами -->
+    <div class="control-section">
+      <div class="section-title">🎛️ Режимы работы</div>
+      <div class="button-grid">
+        <button class="btn btn-info" onclick="sendCommand('mode_normal')">
+          <span>🚶</span> NORMAL
+        </button>
+        <button class="btn btn-info" onclick="sendCommand('mode_eco')">
+          <span>🌿</span> ECO
+        </button>
+        <button class="btn btn-info" onclick="sendCommand('mode_sport')">
+          <span>🏎️</span> SPORT
+        </button>
+      </div>
+    </div>
+
+    <!-- Ограничение скорости -->
+    <div class="control-section">
+      <div class="section-title">📏 Ограничение скорости</div>
+      <div class="button-grid">
+        <button class="btn btn-warning" onclick="sendCommand('speed_15')">15 км/ч</button>
+        <button class="btn btn-warning" onclick="sendCommand('speed_20')">20 км/ч</button>
+        <button class="btn btn-warning" onclick="sendCommand('speed_25')">25 км/ч</button>
+        <button class="btn btn-warning" onclick="sendCommand('speed_30')">30 км/ч</button>
+      </div>
+    </div>
+
+    <!-- Дополнительные функции -->
+    <div class="control-section">
+      <div class="section-title">🔧 Дополнительные функции</div>
+      <div class="button-grid">
+        <button class="btn btn-toggle" onclick="sendCommand('headlight_toggle')" id="headlightBtn">
+          <span>💡</span> Фары ВКЛ
+        </button>
+        <button class="btn btn-toggle" onclick="sendCommand('beep_toggle')" id="beepBtn">
+          <span>🔊</span> Звук ВКЛ
+        </button>
+        <button class="btn btn-toggle" onclick="sendCommand('cruise_toggle')" id="cruiseBtn">
+          <span>⏱️</span> Круиз ОТКЛ
+        </button>
+        <button class="btn btn-toggle" onclick="sendCommand('engine_on')" id="engineBtn">
+          <span>⚡</span> Двигатель ВКЛ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Уведомления -->
+  <div class="notification" id="notification"></div>
+
+  <script>
+    let autoRefreshInterval = null;
+    let currentStatus = true;
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', function() {
+      loadStatus();
+      startAutoRefresh();
+    });
+
+    // Функции статуса
+    function updateStatus(isLocked) {
+      const statusCard = document.getElementById('statusCard');
+      const statusText = document.getElementById('statusText');
+      const statusSubtext = document.getElementById('statusSubtext');
+      
+      currentStatus = isLocked;
+      
+      if (isLocked) {
+        statusCard.className = 'card status-card';
+        statusText.innerHTML = '🔒 ЗАБЛОКИРОВАН';
+        statusSubtext.innerHTML = 'Самокат заблокирован';
+      } else {
+        statusCard.className = 'card status-card unlocked';
+        statusText.innerHTML = '🔓 РАЗБЛОКИРОВАН';
+        statusSubtext.innerHTML = 'Самокат готов к работе';
+      }
     }
 
-    // Запрос статуса при загрузке
-    fetch('/status')
-      .then(response => response.json())
-      .then(data => {
-        updateStatus(data.isLocked);
-      });
+    // Загрузка данных
+    async function loadStatus() {
+      try {
+        const [statusRes, dataRes] = await Promise.all([
+          fetch('/status'),
+          fetch('/data')
+        ]);
+        
+        const statusData = await statusRes.json();
+        const scooterData = await dataRes.json();
+        
+        if (statusData.success) {
+          updateStatus(statusData.isLocked);
+        }
+        
+        if (scooterData.success) {
+          updateScooterData(scooterData);
+        }
+      } catch (error) {
+        showNotification('Ошибка загрузки данных', true);
+      }
+    }
+
+    // Обновление данных самоката
+    function updateScooterData(data) {
+      document.getElementById('batteryValue').textContent = data.battery + '%';
+      document.getElementById('speedValue').textContent = data.speed;
+      document.getElementById('tempValue').textContent = data.temperature + '°';
+      document.getElementById('mileageValue').textContent = data.mileage;
+      
+      // Обновляем состояния кнопок
+      updateButtonState('headlightBtn', '💡 Фары', data.headlightState);
+      updateButtonState('beepBtn', '🔊 Звук', data.beepState);
+      updateButtonState('cruiseBtn', '⏱️ Круиз', data.cruiseControl);
+      updateButtonState('engineBtn', '⚡ Двигатель', data.engineState);
+    }
+
+    // Обновление состояния кнопок
+    function updateButtonState(btnId, prefix, state) {
+      const btn = document.getElementById(btnId);
+      btn.innerHTML = `<span>${prefix.split(' ')[0]}</span> ${prefix.split(' ')[1]} ${state ? 'ВКЛ' : 'ВЫКЛ'}`;
+      btn.className = state ? 'btn btn-active' : 'btn btn-toggle';
+    }
+
+    // Автообновление
+    function startAutoRefresh() {
+      autoRefreshInterval = setInterval(loadStatus, 3000);
+      document.getElementById('refreshBtn').className = 'btn btn-active';
+    }
+
+    function stopAutoRefresh() {
+      clearInterval(autoRefreshInterval);
+      document.getElementById('refreshBtn').className = 'btn btn-primary';
+    }
+
+    function toggleDataRefresh() {
+      if (autoRefreshInterval) {
+        stopAutoRefresh();
+      } else {
+        startAutoRefresh();
+      }
+    }
+
+    // Отправка команд
+    async function sendCommand(cmd) {
+      try {
+        const response = await fetch('/' + cmd);
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification(data.message);
+          // Обновляем данные после команды
+          setTimeout(loadStatus, 500);
+        } else {
+          showNotification('Ошибка: ' + data.message, true);
+        }
+      } catch (error) {
+        showNotification('Ошибка соединения', true);
+      }
+    }
+
+    // Уведомления
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = `notification ${isError ? 'error' : ''} show`;
+      
+      setTimeout(() => {
+        notification.className = 'notification';
+      }, 3000);
+    }
+
+    // Обработка свайпов для мобильных
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+
+    document.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    });
+
+    function handleSwipe() {
+      const swipeMin = 50;
+      if (touchStartX - touchEndX > swipeMin) {
+        // Свайп влево - разблокировать
+        if (currentStatus) sendCommand('unlock');
+      } else if (touchEndX - touchStartX > swipeMin) {
+        // Свайп вправо - заблокировать
+        if (!currentStatus) sendCommand('lock');
+      }
+    }
   </script>
 </body>
 </html>
