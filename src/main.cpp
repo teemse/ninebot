@@ -2,6 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
+#include <vector>
 
 // Настройки Wi-Fi
 const char *ssid = "NinebotESx";
@@ -12,6 +13,117 @@ ESP8266WebServer server(80);
 // ============================================================================
 // КОМАНДЫ ПРОТОКОЛА (полный набор)
 // ============================================================================
+
+// ============================================================================
+// КОНСТАНТЫ COMMAND TYPE (Типы команд)
+// ============================================================================
+
+// Команды доступа к контрольной таблице
+#define CMD_CMAP_RD        0x01  // Чтение контрольной таблицы
+#define CMD_CMAP_WR        0x02  // Запись контрольной таблицы (с ответом)
+#define CMD_CMAP_WR_NR     0x03  // Запись контрольной таблицы (без ответа)
+#define CMD_CMAP_ACK_RD    0x04  // Ответ на чтение
+#define CMD_CMAP_ACK_WR    0x05  // Ответ на запись
+
+// Команды загрузки прошивки
+#define CMD_IAP_BEGIN      0x07  // Начало загрузки прошивки
+#define CMD_IAP_TRANS      0x08  // Передача данных прошивки
+#define CMD_IAP_VERIFY     0x09  // Проверка прошивки
+#define CMD_MCU_RESET      0x0A  // Сброс чипа
+#define CMD_IAP_ACK        0x0B  // Ответ загрузки прошивки
+
+// Специальные команды (работают в реальности)
+#define CMD_HEARTBEAT      0x55  // Heartbeat (специальная команда)
+
+// ============================================================================
+// КОНСТАНТЫ DATA INDEX (Адреса регистров)
+// ============================================================================
+
+// Информационные регистры (только чтение)
+#define INDEX_SN           0x10  // Серийный номер самоката (14 байт)
+#define INDEX_BT_PASSWORD  0x17  // Пароль Bluetooth (6 байт)
+#define INDEX_FW_VERSION   0x1A  // Версия прошивки
+#define INDEX_ERROR_CODE   0x1B  // Код ошибки
+#define INDEX_ALARM_CODE   0x1C  // Код тревоги
+#define INDEX_BOOL_STATUS  0x1D  // Статус битов
+#define INDEX_WORK_SYSTEM  0x1E  // Текущая операционная система
+#define INDEX_WORK_MODE    0x1F  // Режим работы (0-NORMAL, 1-ECO, 2-SPORT)
+#define INDEX_BATTERY1     0x20  // Объем батареи 1
+#define INDEX_BATTERY2     0x21  // Объем батареи 2
+#define INDEX_BATTERY      0x22  // Процент батареи (0-100)
+#define INDEX_ACTUAL_RANGE 0x24  // Фактический остаток пробега (10м)
+#define INDEX_PREDICT_RANGE 0x25 // Прогнозируемый остаток пробега (10м)
+#define INDEX_SPEED        0x26  // Текущая скорость (0.1 км/ч)
+#define INDEX_MILEAGE_L    0x29  // Младшие 16 бит общего пробега (м)
+#define INDEX_MILEAGE_H    0x2A  // Старшие 16 бит общего пробега (м)
+#define INDEX_SINGLE_MILEAGE 0x2F // Пробег за одну поездку (10м)
+#define INDEX_TOTAL_TIME_L 0x32  // Младшие 16 бит общего времени работы (сек)
+#define INDEX_TOTAL_TIME_H 0x33  // Старшие 16 бит общего времени работы (сек)
+#define INDEX_RIDE_TIME_L  0x34  // Младшие 16 бит общего времени езды (сек)
+#define INDEX_RIDE_TIME_H  0x35  // Старшие 16 бит общего времени езды (сек)
+#define INDEX_SINGLE_TIME  0x3A  // Время одной поездки (сек)
+#define INDEX_RIDE_TIME    0x3B  // Время езды (сек)
+#define INDEX_BODY_TEMP    0x3E  // Температура самоката (0.1°C)
+#define INDEX_BAT1_TEMP    0x3F  // Температура батареи 1 (0.1°C)
+#define INDEX_BAT2_TEMP    0x40  // Температура батареи 2 (0.1°C)
+#define INDEX_MOS_TEMP     0x41  // Температура MOS транзисторов
+#define INDEX_DRIVE_VOLT   0x47  // Напряжение системы (0.01V)
+#define INDEX_AVG_SPEED    0x65  // Средняя скорость (0.1 км/ч)
+#define INDEX_VER_BMS2     0x66  // Версия внешней батареи
+#define INDEX_VER_BMS      0x67  // Версия встроенной батареи
+#define INDEX_VER_BLE      0x68  // Версия прошивки панели приборов
+
+// Управляющие регистры (чтение/запись)
+#define INDEX_LOCK         0x70  // Блокировка (записать 1 для блокировки)
+#define INDEX_UNLOCK       0x71  // Разблокировка (записать 1 для разблокировки)
+#define INDEX_LIMIT_SPEED  0x72  // Ограничение скорости
+#define INDEX_NORMAL_SPEED 0x73  // Ограничение скорости в нормальном режиме (0.1 км/ч)
+#define INDEX_SPEED_LIMIT  0x74  // Ограничение скорости в режиме ограничения (0.1 км/ч)
+#define INDEX_WORK_MODE_CTL 0x75 // Режим работы: 0-NORMAL, 1-ECO, 2-SPORT
+#define INDEX_ENGINE       0x77  // Запуск/остановка двигателя
+#define INDEX_REBOOT       0x78  // Перезагрузка системы (записать 1)
+#define INDEX_POWER_OFF    0x79  // Выключение (записать 1)
+#define INDEX_CRUISE       0x7C  // Круиз-контроль: 0-Выкл, 1-Вкл
+#define INDEX_FUN_BOOL     0x7D  // Настройки функций (битовые флаги)
+#define INDEX_FIND_SCOOTER 0x7E  // Поиск самоката: 0-Выкл, 1-Вкл
+#define INDEX_FUN_BOOL_1   0x80  // Настройки функций 1 (аренда)
+#define INDEX_FUN_BOOL_2   0x81  // Настройки функций 2 (аренда)
+#define INDEX_HEADLIGHT    0x90  // Управление фарами: 0-Выкл, 1-Вкл (аренда)
+#define INDEX_BEEP_ALARM   0x91  // Звуковой сигнал тревоги: 0-Выкл, 1-Вкл (аренда)
+#define INDEX_BEEP_TOTAL   0x92  // Управление звуком: 0-Выкл, 1-Вкл (аренда)
+
+// Быстрые данные (только чтение) - 0xB0-0xBD
+#define INDEX_QUICK_ERROR  0xB0  // Код ошибки (быстрый)
+#define INDEX_QUICK_ALARM  0xB1  // Код тревоги (быстрый)
+#define INDEX_QUICK_BOOL   0xB2  // Статус битов (быстрый)
+#define INDEX_QUICK_BAT12  0xB3  // Батарея 1 и 2 (младший-бат1, старший-бат2)
+#define INDEX_QUICK_BATTERY 0xB4 // Процент батареи (0-100)
+#define INDEX_QUICK_SPEED  0xB5  // Текущая скорость (0.1 км/ч)
+#define INDEX_QUICK_AVG_SPEED 0xB6 // Средняя скорость (0.1 км/ч)
+#define INDEX_QUICK_MILEAGE_L 0xB7 // Младшие 16 бит пробега (м)
+#define INDEX_QUICK_MILEAGE_H 0xB8 // Старшие 16 бит пробега (м)
+#define INDEX_QUICK_SINGLE_MILEAGE 0xB9 // Пробег за поездку (10м)
+#define INDEX_QUICK_SINGLE_TIME 0xBA // Время поездки (сек)
+#define INDEX_QUICK_BODY_TEMP 0xBB // Температура самоката (0.1°C)
+#define INDEX_QUICK_CURRENT_LIMIT 0xBC // Текущее ограничение скорости
+#define INDEX_QUICK_SYS_POWER 0xBD // Мощность системы (Вт)
+
+// ============================================================================
+// БИТОВЫЕ МАСКИ ДЛЯ СТАТУСА
+// ============================================================================
+
+// Битовые маски для INDEX_BOOL_STATUS (0x1D) и INDEX_QUICK_BOOL (0xB2)
+#define STATUS_LIMIT_SPEED   0x0001  // Ограничение скорости
+#define STATUS_LOCK          0x0002  // Самокат заблокирован
+#define STATUS_BEEP          0x0004  // Звуковой сигнал
+#define STATUS_BAT2_IN       0x0200  // Батарея 2 подключена
+#define STATUS_ACTIVATED     0x0800  // Самокат активирован
+
+// Структура для работы с командами
+struct NinebotCommand {
+    std::vector<uint8_t> data;
+    String description;
+};
 
 // Базовые команды
 const byte unlock[] = {0x5A, 0xA5, 0x02, 0x3D, 0x20, 0x02, 0x71, 0x01, 0x00, 0x2C, 0xFF};
@@ -623,8 +735,77 @@ const char *html_page = R"rawliteral(
 )rawliteral";
 
 // ============================================================================
+// ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ КОМАНД
+// ============================================================================
+
+// Функция расчета CRC (должна быть объявлена ранее)
+uint16_t calculateChecksum(uint8_t* data, int len) {
+    uint16_t checksum = 0;
+    for (int i = 0; i < len; i++) {
+        checksum += data[i];
+    }
+    return ~checksum;
+}
+
+NinebotCommand createCommand(uint8_t commandType, uint8_t dataIndex, uint16_t dataValue = 0, const String& desc = "") {
+    NinebotCommand cmd;
+    cmd.description = desc;
+    
+    // Определяем длину данных в зависимости от типа команды
+    uint8_t dataLength = 0;
+    
+    switch (commandType) {
+        case CMD_CMAP_RD:    // Чтение - всегда 1 байт (длина чтения)
+            dataLength = 1;
+            break;
+        case CMD_CMAP_WR:    // Запись с ответом
+        case CMD_CMAP_WR_NR: // Запись без ответа
+            dataLength = 2;  // 16-битные данные
+            break;
+        case CMD_HEARTBEAT:  // Heartbeat
+            dataLength = 1;
+            break;
+        default:
+            dataLength = 2;  // По умолчанию 2 байта
+    }
+    
+    // Базовый размер: заголовок(2) + длина(1) + ID(2) + команда(1) + индекс(1) + данные(N) + CRC(2)
+    int totalLength = 9 + dataLength;
+    cmd.data.resize(totalLength);
+    
+    // Заполняем заголовок
+    cmd.data[0] = 0x5A;
+    cmd.data[1] = 0xA5;
+    cmd.data[2] = dataLength;
+    cmd.data[3] = 0x3D;      // Source ID (наш контроллер)
+    cmd.data[4] = 0x20;      // Target ID (самокат)
+    cmd.data[5] = commandType;
+    cmd.data[6] = dataIndex;
+    
+    // Заполняем данные
+    if (dataLength > 0) {
+        if (dataLength >= 2) {
+            cmd.data[7] = dataValue & 0xFF;        // Младший байт
+            cmd.data[8] = (dataValue >> 8) & 0xFF; // Старший байт
+        } else {
+            cmd.data[7] = dataValue & 0xFF;        // 1 байт данных
+        }
+    }
+    
+    // Расчет CRC
+    int crcDataLength = dataLength + 4;
+    uint16_t crc = calculateChecksum(cmd.data.data() + 2, crcDataLength);
+    
+    cmd.data[dataLength + 7] = crc & 0xFF;
+    cmd.data[dataLength + 8] = (crc >> 8) & 0xFF;
+    
+    return cmd;
+}
+
+// ============================================================================
 // ФУНКЦИИ УПРАВЛЕНИЯ
 // ============================================================================
+
 
 void blinkLED(int times)
 {
