@@ -3,6 +3,7 @@
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include <LittleFS.h>
 
 // Настройки Wi-Fi
 const char* ssid = "NinebotESx";
@@ -28,63 +29,97 @@ struct NinebotCommand {
 #define CMD_HEARTBEAT      0x55
 
 // Регистры
-#define INDEX_ERROR_CODE   0x1B
-#define INDEX_BOOL_STATUS  0x1D
-#define INDEX_WORK_MODE    0x1F
-#define INDEX_BATTERY      0x22
-#define INDEX_SPEED        0x26
-#define INDEX_MILEAGE_L    0x29
-#define INDEX_MILEAGE_H    0x2A
-#define INDEX_BODY_TEMP    0x3E
-#define INDEX_LOCK         0x70
-#define INDEX_UNLOCK       0x71
-#define INDEX_NORMAL_SPEED 0x73
-#define INDEX_SPEED_LIMIT  0x74
-#define INDEX_WORK_MODE_CTL 0x75
-#define INDEX_ENGINE       0x77
-#define INDEX_REBOOT       0x78
-#define INDEX_POWER_OFF    0x79
-#define INDEX_CRUISE       0x7C
-#define INDEX_FUN_BOOL_1   0x80
-#define INDEX_HEADLIGHT    0x90
-#define INDEX_BEEP_TOTAL   0x92
-#define INDEX_SERIAL_NUMBER 0x10  // Серийный номер (14 байт)
-#define INDEX_BT_PASSWORD   0x17  // Пароль Bluetooth (6 байт)
-#define INDEX_FW_VERSION    0x1A  // Версия прошивки
-#define INDEX_ALARM_CODE    0x1C  // Код тревоги
-#define INDEX_BOOL_STATUS   0x1D  // Булевы статусы
-#define INDEX_WORK_SYSTEM   0x1E  // Рабочая система (1 или 2)
-#define INDEX_BATTERY1_CAP  0x20  // Емкость батареи 1
-#define INDEX_BATTERY2_CAP  0x21  // Емкость батареи 2
-#define INDEX_ACTUAL_RANGE  0x24  // Фактический остаток пробега (10м)
-#define INDEX_PREDICT_RANGE 0x25  // Прогнозируемый остаток пробега (10м)
-#define INDEX_SINGLE_MILEAGE 0x2F // Пробег за одну поездку (10м)
-#define INDEX_TOTAL_TIME_L  0x32  // Общее время работы (младшие 16 бит, сек)
-#define INDEX_TOTAL_TIME_H  0x33  // Общее время работы (старшие 16 бит, сек)
-#define INDEX_RIDE_TIME_L   0x34  // Общее время поездки (младшие 16 бит, сек)
-#define INDEX_RIDE_TIME_H   0x35  // Общее время поездки (старшие 16 бит, сек)
-#define INDEX_SINGLE_TIME   0x3A  // Время одной поездки (сек)
-#define INDEX_SINGLE_RIDE_TIME 0x3B // Время движения одной поездки (сек)
-#define INDEX_BAT1_TEMP     0x3F  // Температура батареи 1
-#define INDEX_BAT2_TEMP     0x40  // Температура батареи 2
-#define INDEX_MOS_TEMP      0x41  // Температура MOS
-#define INDEX_DRIVE_VOLTAGE 0x47  // Напряжение системы (0.01V)
-#define INDEX_MOTOR_CURRENT 0x53  // Ток мотора (0.01A)
-#define INDEX_AVG_SPEED     0x65  // Средняя скорость
-#define INDEX_BMS2_VERSION  0x66  // Версия внешней BMS
-#define INDEX_BMS_VERSION   0x67  // Версия встроенной BMS
-#define INDEX_BLE_VERSION   0x68  // Версия прошивки панели
+// ============================================================================
+// ПОЛНЫЙ СПИСОК РЕГИСТРОВ ИЗ ДОКУМЕНТА
+// ============================================================================
+
+// Основные регистры (0x00-0x6F)
+#define INDEX_SERIAL_NUMBER     0x10  // Серийный номер (14 байт)
+#define INDEX_BT_PASSWORD       0x17  // Пароль Bluetooth (6 байт)
+#define INDEX_FW_VERSION        0x1A  // Версия прошивки контроллера
+#define INDEX_ERROR_CODE        0x1B  // Код ошибки
+#define INDEX_ALARM_CODE        0x1C  // Код тревоги
+#define INDEX_BOOL_STATUS       0x1D  // Булевы статусы
+#define INDEX_WORK_SYSTEM       0x1E  // Рабочая система (1 или 2)
+#define INDEX_WORK_MODE         0x1F  // Режим работы
+#define INDEX_BATTERY1_CAP      0x20  // Емкость батареи 1
+#define INDEX_BATTERY2_CAP      0x21  // Емкость батареи 2
+#define INDEX_BATTERY           0x22  // Общая емкость батареи
+#define INDEX_ACTUAL_RANGE      0x24  // Фактический запас хода (10м)
+#define INDEX_PREDICT_RANGE     0x25  // Прогнозируемый запас хода (10м)
+#define INDEX_SPEED             0x26  // Текущая скорость (0.1km/h)
+#define INDEX_MILEAGE_L         0x29  // Общий пробег младшие 16 бит (м)
+#define INDEX_MILEAGE_H         0x2A  // Общий пробег старшие 16 бит (м)
+#define INDEX_SINGLE_MILEAGE    0x2F  // Пробег одной поездки (10м)
+#define INDEX_TOTAL_TIME_L      0x32  // Общее время работы (младшие 16 бит, сек)
+#define INDEX_TOTAL_TIME_H      0x33  // Общее время работы (старшие 16 бит, сек)
+#define INDEX_RIDE_TIME_L       0x34  // Общее время поездки (младшие 16 бит, сек)
+#define INDEX_RIDE_TIME_H       0x35  // Общее время поездки (старшие 16 бит, сек)
+#define INDEX_SINGLE_TIME       0x3A  // Время одной операции (сек)
+#define INDEX_SINGLE_RIDE_TIME  0x3B  // Время движения одной поездки (сек)
+#define INDEX_BODY_TEMP         0x3E  // Температура корпуса (0.1°C)
+#define INDEX_BAT1_TEMP         0x3F  // Температура батареи 1 (0.1°C)
+#define INDEX_BAT2_TEMP         0x40  // Температура батареи 2 (0.1°C)
+#define INDEX_MOS_TEMP          0x41  // Температура MOS (0.1°C)
+#define INDEX_DRIVE_VOLTAGE     0x47  // Напряжение системы (0.01V)
+#define INDEX_BAT2_TEMP2        0x50  // Температура внешней батареи 2 (1°C)
+#define INDEX_MOTOR_CURRENT     0x53  // Ток мотора (0.01A)
+#define INDEX_AVG_SPEED         0x65  // Средняя скорость (0.1km/h)
+#define INDEX_BMS2_VERSION      0x66  // Версия внешней BMS
+#define INDEX_BMS_VERSION       0x67  // Версия встроенной BMS
+#define INDEX_BLE_VERSION       0x68  // Версия прошивки панели
+
+// Регистры управления (0x70-0x92)
+#define INDEX_LOCK              0x70  // Блокировка
+#define INDEX_UNLOCK            0x71  // Разблокировка
+#define INDEX_LIMIT_SPD         0x72  // Ограничение/снятие скорости
+#define INDEX_NORMAL_SPEED      0x73  // Лимит скорости в normal mode (0.1km/h)
+#define INDEX_SPEED_LIMIT       0x74  // Лимит скорости в limit mode (0.1km/h)
+#define INDEX_WORK_MODE_CTL     0x75  // Управление режимом работы
+#define INDEX_ENGINE            0x77  // Запуск/остановка двигателя
+#define INDEX_REBOOT            0x78  // Перезагрузка системы
+#define INDEX_POWER_OFF         0x79  // Выключение
+#define INDEX_CRUISE            0x7C  // Круиз-контроль
+#define INDEX_FUN_BOOL          0x7D  // Настройки функций bool
+#define INDEX_FIND_SCOOTER      0x7E  // Поиск самоката (прокат)
+#define INDEX_FUN_BOOL_1        0x80  // Настройки функций 1 (прокат)
+#define INDEX_FUN_BOOL_2        0x81  // Настройки функций 2 (прокат)
+#define INDEX_HEADLIGHT         0x90  // Управление фарами (прокат)
+#define INDEX_BEEP_ALARM        0x91  // Звуковой сигнал (прокат)
+#define INDEX_BEEP_TOTAL        0x92  // Общий звук (прокат)
 
 // Быстрые регистры (0xB0-0xBF)
-#define INDEX_QUICK_ERROR   0xB0  // Код ошибки (быстрый)
-#define INDEX_QUICK_ALARM   0xB1  // Код тревоги (быстрый)
-#define INDEX_QUICK_BOOL    0xB2  // Булевы статусы (быстрый)
-#define INDEX_QUICK_BAT_BOTH 0xB3 // Емкость обеих батарей
-#define INDEX_QUICK_AVG_SPEED 0xB6 // Средняя скорость (быстрый)
-#define INDEX_QUICK_SINGLE_MILEAGE 0xB9 // Пробег одной поездки (быстрый)
-#define INDEX_QUICK_SINGLE_TIME 0xBA // Время одной поездки (быстрый)
-#define INDEX_QUICK_POWER   0xBD  // Мощность самоката (Вт)
-#define INDEX_QUICK_PREDICT_RANGE 0xBF // Прогнозируемый пробег
+#define INDEX_QUICK_ERROR       0xB0  // Код ошибки (быстрый)
+#define INDEX_QUICK_ALARM       0xB1  // Код тревоги (быстрый)
+#define INDEX_QUICK_BOOL        0xB2  // Булевы статусы (быстрый)
+#define INDEX_QUICK_BAT_BOTH    0xB3  // Емкость обеих батарей
+#define INDEX_QUICK_BATTERY     0xB4  // Общая емкость батареи (быстрый)
+#define INDEX_QUICK_SPEED       0xB5  // Скорость (быстрый)
+#define INDEX_QUICK_AVG_SPEED   0xB6  // Средняя скорость (быстрый)
+#define INDEX_QUICK_MILEAGE_L   0xB7  // Пробег младшие 16 бит (быстрый)
+#define INDEX_QUICK_MILEAGE_H   0xB8  // Пробег старшие 16 бит (быстрый)
+#define INDEX_QUICK_SINGLE_MILEAGE 0xB9  // Пробег поездки (быстрый)
+#define INDEX_QUICK_SINGLE_TIME 0xBA  // Время поездки (быстрый)
+#define INDEX_QUICK_BODY_TEMP   0xBB  // Температура корпуса (быстрый)
+#define INDEX_QUICK_CURRENT_LIMIT 0xBC  // Текущий лимит скорости
+#define INDEX_QUICK_POWER       0xBD  // Мощность (Вт)
+#define INDEX_QUICK_ALARM_DELAY 0xBE  // Код тревоги задержки
+#define INDEX_QUICK_PREDICT_RANGE 0xBF  // Прогнозируемый запас хода
+
+// Управление подсветкой (0xC6-0xCE)
+#define INDEX_LED_MODE          0xC6  // Режим подсветки
+#define INDEX_LED_COLOR1        0xC8  // Цвет 1
+#define INDEX_LED_COLOR2        0xCA  // Цвет 2
+#define INDEX_LED_COLOR3        0xCC  // Цвет 3
+#define INDEX_LED_COLOR4        0xCE  // Цвет 4
+
+// CPU ID (0xDA-0xDF)
+#define INDEX_CPUID_A           0xDA
+#define INDEX_CPUID_B           0xDB
+#define INDEX_CPUID_C           0xDC
+#define INDEX_CPUID_D           0xDD
+#define INDEX_CPUID_E           0xDE
+#define INDEX_CPUID_F           0xDF
 
 // ============================================================================
 // ПЕРЕМЕННЫЕ
@@ -100,847 +135,90 @@ unsigned long lastHeartbeatTime = 0;
 const unsigned long HEARTBEAT_INTERVAL = 4000;
 
 // Данные самоката
-int scooterSpeed = 0;
+// Основные данные
+
+String btPassword = "000000";
+int fwVersion = 0;
+int errorCode = 0;
 int scooterBattery = 0;
 int scooterTemperature = 0;
 int scooterErrorCode = 0;
-unsigned long totalMileage = 0;
-int workMode = 0;
 int speedLimit = 0;
-bool cruiseControl = false;
-bool headlightState = true;
 bool beepState = true;
-bool engineState = true;
 String scooterSerial = "";
+int scooterPower = 0;
+int alarmCode = 0;
+uint16_t boolStatus = 0;
+int workSystem = 1;
+int workMode = 0;
 int battery1Capacity = 0;
 int battery2Capacity = 0;
+int batteryTotal = 0;
 int actualRange = 0;
 int predictedRange = 0;
+int scooterSpeed = 0;
+unsigned long totalMileage = 0;
 int singleMileage = 0;
 unsigned long totalOperationTime = 0;
 unsigned long totalRideTime = 0;
+int singleOperationTime = 0;
 int singleRideTime = 0;
+int bodyTemperature = 0;
 int battery1Temp = 0;
 int battery2Temp = 0;
 int mosTemp = 0;
 float driveVoltage = 0;
+int bat2Temp2 = 0;
 float motorCurrent = 0;
 int avgSpeed = 0;
-String bmsVersion = "";
 String bms2Version = "";
+String bmsVersion = "";
 String bleVersion = "";
-int scooterPower = 0;
-uint16_t boolStatus = 0;
-uint16_t alarmCode = 0;
 
-// HTML страница
-const char* html_page = R"rawliteral(
-<!DOCTYPE HTML>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ninebot ES Controller</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+// Данные управления
+int normalSpeedLimit = 250;
+int speedLimitMode = 60;
+bool engineState = true;
+bool cruiseControl = false;
+uint16_t funBoolSettings = 0;
+uint16_t funBool1Settings = 0;
+uint16_t funBool2Settings = 0;
+bool headlightState = true;
+bool beepAlarmState = true;
+bool beepTotalState = true;
+
+// Быстрые данные
+int quickError = 0;
+int quickAlarm = 0;
+uint16_t quickBoolStatus = 0;
+int quickBatBoth = 0;
+int quickBattery = 0;
+int quickSpeed = 0;
+int quickAvgSpeed = 0;
+unsigned long quickMileage = 0;
+int quickSingleMileage = 0;
+int quickSingleTime = 0;
+int quickBodyTemp = 0;
+int quickCurrentLimit = 0;
+int quickPower = 0;
+int quickAlarmDelay = 0;
+int quickPredictRange = 0;
+
+// Подсветка
+int ledMode = 1;
+uint16_t ledColor1 = 0xA0F0; // Синий
+uint16_t ledColor2 = 0x50F0; // Зеленый
+uint16_t ledColor3 = 0x00F0; // Красный
+uint16_t ledColor4 = 0xC8F0; // Фиолетовый
+
+// CPU ID
+uint16_t cpuIdA = 0;
+uint16_t cpuIdB = 0;
+uint16_t cpuIdC = 0;
+uint16_t cpuIdD = 0;
+uint16_t cpuIdE = 0;
+uint16_t cpuIdF = 0;
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: #333;
-      line-height: 1.6;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      color: white;
-    }
-
-    .header h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-
-    .header p {
-      font-size: 1.1rem;
-      opacity: 0.9;
-    }
-
-    .dashboard {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 15px;
-      padding: 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-    }
-
-    .status-card {
-      text-align: center;
-      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-      color: white;
-    }
-
-    .status-card.unlocked {
-      background: linear-gradient(135deg, #00b894, #00a085);
-    }
-
-    .status-icon {
-      font-size: 3rem;
-      margin-bottom: 15px;
-    }
-
-    .status-text {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-
-    .data-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-
-    .data-item {
-      text-align: center;
-      padding: 15px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 10px;
-    }
-
-    .data-value {
-      font-size: 1.8rem;
-      font-weight: bold;
-      color: white;
-    }
-
-    .data-label {
-      font-size: 0.9rem;
-      opacity: 0.8;
-      color: white;
-    }
-
-    .control-section {
-      margin-bottom: 25px;
-    }
-
-    .section-title {
-      color: rgb(0, 0, 0);
-      margin-bottom: 15px;
-      font-size: 1.3rem;
-      border-left: 4px solid #ff6b6b;
-      padding-left: 15px;
-    }
-
-    .button-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-    }
-
-    .btn {
-      padding: 15px 20px;
-      border: none;
-      border-radius: 10px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .btn:active {
-      transform: scale(0.95);
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #74b9ff, #0984e3);
-      color: white;
-    }
-
-    .btn-success {
-      background: linear-gradient(135deg, #00b894, #00a085);
-      color: white;
-    }
-
-    .btn-danger {
-      background: linear-gradient(135deg, #ff7675, #d63031);
-      color: white;
-    }
-
-    .btn-warning {
-      background: linear-gradient(135deg, #fdcb6e, #e17055);
-      color: white;
-    }
-
-    .btn-info {
-      background: linear-gradient(135deg, #a29bfe, #6c5ce7);
-      color: white;
-    }
-
-    .btn-toggle {
-      background: linear-gradient(135deg, #dfe6e9, #b2bec3);
-      color: #2d3436;
-    }
-
-    .btn-active {
-      background: linear-gradient(135deg, #00cec9, #00b894);
-      color: white;
-    }
-
-    /* Стили для расширенной информации */
-    .extended-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-top: 15px;
-    }
-
-    .info-item {
-      background: rgba(255,255,255,0.1);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      padding: 12px;
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    .info-value {
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: rgb(0, 0, 0);
-      margin-bottom: 5px;
-    }
-
-    .info-label {
-      font-size: 0.8rem;
-      opacity: 0.8;
-      color: rgb(0, 0, 0);
-    }
-
-    .tab-container {
-      background: white;
-      border-radius: 15px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-
-    .tab-buttons {
-      display: flex;
-      background: #f8f9fa;
-      border-bottom: 1px solid #dee2e6;
-    }
-
-    .tab-button {
-      flex: 1;
-      padding: 15px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-    }
-
-    .tab-button.active {
-      background: white;
-      color: #667eea;
-      border-bottom: 3px solid #667eea;
-    }
-
-    .tab-content {
-      padding: 25px;
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
-    }
-
-    .stat-card {
-      background: linear-gradient(135deg, #74b9ff, #0984e3);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      color: white;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-    }
-
-    .stat-value {
-      font-size: 2rem;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    .stat-label {
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 25px;
-      background: #00b894;
-      color: white;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-      transform: translateX(400px);
-      transition: transform 0.3s ease;
-      z-index: 1000;
-    }
-
-    .notification.show {
-      transform: translateX(0);
-    }
-
-    .notification.error {
-      background: #d63031;
-    }
-
-    /* Адаптивность */
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-
-      .header h1 {
-        font-size: 2rem;
-      }
-
-      .card {
-        padding: 20px;
-      }
-
-      .button-grid {
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      }
-
-      .btn {
-        padding: 12px 15px;
-        font-size: 0.9rem;
-      }
-
-      .data-value {
-        font-size: 1.5rem;
-      }
-
-      .tab-buttons {
-        flex-direction: column;
-      }
-
-      .extended-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 200px) {
-      .dashboard {
-        grid-template-columns: 1fr;
-      }
-
-      .button-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .data-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .extended-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <!-- Шапка -->
-    <div class="header">
-      <h1>🚀 Ninebot ES Controller</h1>
-      <p>Полное управление и мониторинг вашего самоката</p>
-    </div>
-
-    <!-- Табы для переключения между основным и расширенным видом -->
-    <div class="tab-container">
-      <div class="tab-buttons">
-        <button class="tab-button active" onclick="switchTab('main')">Основное</button>
-        <button class="tab-button" onclick="switchTab('extended')">Расширенная информация</button>
-        <button class="tab-button" onclick="switchTab('stats')">Статистика</button>
-      </div>
-
-      <!-- Основная вкладка -->
-      <div id="main-tab" class="tab-content active">
-        <!-- Основная панель -->
-        <div class="dashboard">
-          <!-- Карточка статуса -->
-          <div class="card status-card" id="statusCard">
-            <div class="status-icon">🔒</div>
-            <div class="status-text" id="statusText">ЗАБЛОКИРОВАН</div>
-            <div class="status-subtext" id="statusSubtext">Самокат заблокирован</div>
-            
-            <div class="data-grid">
-              <div class="data-item">
-                <div class="data-value" id="batteryValue">0%</div>
-                <div class="data-label">Батарея</div>
-              </div>
-              <div class="data-item">
-                <div class="data-value" id="speedValue">0</div>
-                <div class="data-label">км/ч</div>
-              </div>
-              <div class="data-item">
-                <div class="data-value" id="tempValue">0°</div>
-                <div class="data-label">Температура</div>
-              </div>
-              <div class="data-item">
-                <div class="data-value" id="mileageValue">0</div>
-                <div class="data-label">км</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Быстрое управление -->
-          <div class="card">
-            <h3>⚡ Быстрое управление</h3>
-            <div class="button-grid" style="margin-top: 20px;">
-              <button class="btn btn-success" onclick="sendCommand('unlock')">
-                <span>🔓</span> Разблокировать
-              </button>
-              <button class="btn btn-danger" onclick="sendCommand('lock')">
-                <span>🔒</span> Заблокировать
-              </button>
-              <button class="btn btn-primary" onclick="toggleDataRefresh()" id="refreshBtn">
-                <span>🔄</span> Автообновление
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Управление режимами -->
-        <div class="control-section">
-          <div class="section-title">🎛️ Режимы работы</div>
-          <div class="button-grid">
-            <button class="btn btn-info" onclick="sendCommand('mode_normal')">
-              <span>🚶</span> NORMAL
-            </button>
-            <button class="btn btn-info" onclick="sendCommand('mode_eco')">
-              <span>🌿</span> ECO
-            </button>
-            <button class="btn btn-info" onclick="sendCommand('mode_sport')">
-              <span>🏎️</span> SPORT
-            </button>
-          </div>
-        </div>
-
-        <!-- Ограничение скорости -->
-        <div class="control-section">
-          <div class="section-title">📏 Ограничение скорости</div>
-          <div class="button-grid">
-            <button class="btn btn-warning" onclick="sendCommand('speed_15')">15 км/ч</button>
-            <button class="btn btn-warning" onclick="sendCommand('speed_20')">20 км/ч</button>
-            <button class="btn btn-warning" onclick="sendCommand('speed_25')">25 км/ч</button>
-            <button class="btn btn-warning" onclick="sendCommand('speed_30')">30 км/ч</button>
-          </div>
-        </div>
-
-        <!-- Дополнительные функции -->
-        <div class="control-section">
-          <div class="section-title">🔧 Дополнительные функции</div>
-          <div class="button-grid">
-            <button class="btn btn-toggle" onclick="sendCommand('headlight_toggle')" id="headlightBtn">
-              <span>💡</span> Фары ВКЛ
-            </button>
-            <button class="btn btn-toggle" onclick="sendCommand('beep_toggle')" id="beepBtn">
-              <span>🔊</span> Звук ВКЛ
-            </button>
-            <button class="btn btn-toggle" onclick="sendCommand('cruise_toggle')" id="cruiseBtn">
-              <span>⏱️</span> Круиз ОТКЛ
-            </button>
-            <button class="btn btn-toggle" onclick="sendCommand('engine_on')" id="engineBtn">
-              <span>⚡</span> Двигатель ВКЛ
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Расширенная информация -->
-      <div id="extended-tab" class="tab-content">
-        <div class="dashboard">
-          <!-- Системная информация -->
-          <div class="card">
-            <h3>🔧 Системная информация</h3>
-            <div class="extended-grid">
-              <div class="info-item">
-                <div class="info-value" id="driveVoltageValue">0.0</div>
-                <div class="info-label">Напряжение (В)</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="motorCurrentValue">0.0</div>
-                <div class="info-label">Ток (А)</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="powerValue">0</div>
-                <div class="info-label">Мощность (Вт)</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="avgSpeedValue">0</div>
-                <div class="info-label">Ср. скорость</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Температуры -->
-          <div class="card">
-            <h3>🌡️ Температуры</h3>
-            <div class="extended-grid">
-              <div class="info-item">
-                <div class="info-value" id="bodyTempValue">0°</div>
-                <div class="info-label">Корпус</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="bat1TempValue">0°</div>
-                <div class="info-label">Батарея 1</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="bat2TempValue">0°</div>
-                <div class="info-label">Батарея 2</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="mosTempValue">0°</div>
-                <div class="info-label">MOS</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Батареи -->
-          <div class="card">
-            <h3>🔋 Батареи</h3>
-            <div class="extended-grid">
-              <div class="info-item">
-                <div class="info-value" id="battery1Value">0%</div>
-                <div class="info-label">Батарея 1</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="battery2Value">0%</div>
-                <div class="info-label">Батарея 2</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="actualRangeValue">0</div>
-                <div class="info-label">Запас хода (км)</div>
-              </div>
-              <div class="info-item">
-                <div class="info-value" id="predictedRangeValue">0</div>
-                <div class="info-label">Прогноз (км)</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Информация о системе -->
-          <div class="card">
-            <h3>📊 Система</h3>
-            <div style="margin-top: 15px;">
-              <p><strong>Серийный номер:</strong> <span id="serialValue">N/A</span></p>
-              <p><strong>BMS версия:</strong> <span id="bmsVersionValue">N/A</span></p>
-              <p><strong>Внешняя BMS:</strong> <span id="bms2VersionValue">N/A</span></p>
-              <p><strong>BLE версия:</strong> <span id="bleVersionValue">N/A</span></p>
-              <p><strong>Статус:</strong> <span id="boolStatusValue">N/A</span></p>
-              <p><strong>Тревоги:</strong> <span id="alarmStatusValue">Нет</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Статистика -->
-      <div id="stats-tab" class="tab-content">
-        <div class="dashboard">
-          <!-- Статистика поездок -->
-          <div class="card">
-            <h3>📈 Статистика поездок</h3>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-value" id="singleMileageValue">0</div>
-                <div class="stat-label">Пробег поездки (км)</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="singleRideTimeValue">0</div>
-                <div class="stat-label">Время поездки (мин)</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="totalOperationTimeValue">0</div>
-                <div class="stat-label">Общее время (ч)</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="totalRideTimeValue">0</div>
-                <div class="stat-label">Время движения (ч)</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Дополнительная статистика -->
-          <div class="card">
-            <h3>📊 Дополнительная информация</h3>
-            <div style="margin-top: 15px;">
-              <p><strong>Режим работы:</strong> <span id="workModeValue">N/A</span></p>
-              <p><strong>Лимит скорости:</strong> <span id="speedLimitValue">0</span> км/ч</p>
-              <p><strong>Код ошибки:</strong> <span id="errorCodeValue">0</span></p>
-              <p><strong>Круиз-контроль:</strong> <span id="cruiseValue">ВЫКЛ</span></p>
-              <p><strong>Фары:</strong> <span id="headlightValue">ВКЛ</span></p>
-              <p><strong>Звук:</strong> <span id="beepValue">ВКЛ</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Уведомления -->
-  <div class="notification" id="notification"></div>
-
-  <script>
-    let autoRefreshInterval = null;
-    let currentStatus = true;
-
-    // Инициализация
-    document.addEventListener('DOMContentLoaded', function() {
-      loadStatus();
-      startAutoRefresh();
-    });
-
-    // Переключение вкладок
-    function switchTab(tabName) {
-      // Скрыть все вкладки
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
-      });
-
-      // Показать выбранную вкладку
-      document.getElementById(tabName + '-tab').classList.add('active');
-      event.target.classList.add('active');
-    }
-
-    // Функции статуса
-    function updateStatus(isLocked) {
-      const statusCard = document.getElementById('statusCard');
-      const statusText = document.getElementById('statusText');
-      const statusSubtext = document.getElementById('statusSubtext');
-      
-      currentStatus = isLocked;
-      
-      if (isLocked) {
-        statusCard.className = 'card status-card';
-        statusText.innerHTML = '🔒 ЗАБЛОКИРОВАН';
-        statusSubtext.innerHTML = 'Самокат заблокирован';
-      } else {
-        statusCard.className = 'card status-card unlocked';
-        statusText.innerHTML = '🔓 РАЗБЛОКИРОВАН';
-        statusSubtext.innerHTML = 'Самокат готов к работе';
-      }
-    }
-
-    // Загрузка данных
-    async function loadStatus() {
-      try {
-        const [statusRes, dataRes] = await Promise.all([
-          fetch('/status'),
-          fetch('/data')
-        ]);
-        
-        const statusData = await statusRes.json();
-        const scooterData = await dataRes.json();
-        
-        if (statusData.success) {
-          updateStatus(statusData.isLocked);
-        }
-        
-        if (scooterData.success) {
-          updateScooterData(scooterData);
-        }
-      } catch (error) {
-        showNotification('Ошибка загрузки данных', true);
-      }
-    }
-
-    // Обновление данных самоката
-    function updateScooterData(data) {
-      // Основные данные
-      document.getElementById('batteryValue').textContent = data.battery + '%';
-      document.getElementById('speedValue').textContent = data.speed;
-      document.getElementById('tempValue').textContent = data.temperature + '°';
-      document.getElementById('mileageValue').textContent = data.mileage;
-      
-      // Обновляем состояния кнопок
-      updateButtonState('headlightBtn', '💡 Фары', data.headlightState);
-      updateButtonState('beepBtn', '🔊 Звук', data.beepState);
-      updateButtonState('cruiseBtn', '⏱️ Круиз', data.cruiseControl);
-      updateButtonState('engineBtn', '⚡ Двигатель', data.engineState);
-
-      // Расширенные данные
-      document.getElementById('driveVoltageValue').textContent = data.driveVoltage;
-      document.getElementById('motorCurrentValue').textContent = data.motorCurrent;
-      document.getElementById('powerValue').textContent = data.power;
-      document.getElementById('avgSpeedValue').textContent = data.avgSpeed;
-      
-      // Температуры
-      document.getElementById('bodyTempValue').textContent = data.temperature + '°';
-      document.getElementById('bat1TempValue').textContent = data.battery1Temp + '°';
-      document.getElementById('bat2TempValue').textContent = data.battery2Temp + '°';
-      document.getElementById('mosTempValue').textContent = data.mosTemp + '°';
-      
-      // Батареи
-      document.getElementById('battery1Value').textContent = data.battery1 + '%';
-      document.getElementById('battery2Value').textContent = data.battery2 + '%';
-      document.getElementById('actualRangeValue').textContent = data.actualRange;
-      document.getElementById('predictedRangeValue').textContent = data.predictedRange;
-      
-      // Системная информация
-      document.getElementById('serialValue').textContent = data.serial || 'N/A';
-      document.getElementById('bmsVersionValue').textContent = data.bmsVersion || 'N/A';
-      document.getElementById('bms2VersionValue').textContent = data.bms2Version || 'N/A';
-      document.getElementById('bleVersionValue').textContent = data.bleVersion || 'N/A';
-      document.getElementById('boolStatusValue').textContent = data.boolStatus || 'N/A';
-      document.getElementById('alarmStatusValue').textContent = data.alarmStatus || 'Нет';
-      
-      // Статистика
-      document.getElementById('singleMileageValue').textContent = data.singleMileage;
-      document.getElementById('singleRideTimeValue').textContent = data.singleRideTime;
-      document.getElementById('totalOperationTimeValue').textContent = data.totalOperationTime;
-      document.getElementById('totalRideTimeValue').textContent = data.totalRideTime;
-      
-      document.getElementById('workModeValue').textContent = getWorkModeName(data.workMode);
-      document.getElementById('speedLimitValue').textContent = data.speedLimit;
-      document.getElementById('errorCodeValue').textContent = data.errorCode;
-      document.getElementById('cruiseValue').textContent = data.cruiseControl ? 'ВКЛ' : 'ВЫКЛ';
-      document.getElementById('headlightValue').textContent = data.headlightState ? 'ВКЛ' : 'ВЫКЛ';
-      document.getElementById('beepValue').textContent = data.beepState ? 'ВКЛ' : 'ВЫКЛ';
-    }
-
-    function getWorkModeName(mode) {
-      switch(mode) {
-        case 0: return 'NORMAL';
-        case 1: return 'ECO';
-        case 2: return 'SPORT';
-        default: return 'N/A';
-      }
-    }
-
-    // Обновление состояния кнопок
-    function updateButtonState(btnId, prefix, state) {
-      const btn = document.getElementById(btnId);
-      btn.innerHTML = `<span>${prefix.split(' ')[0]}</span> ${prefix.split(' ')[1]} ${state ? 'ВКЛ' : 'ВЫКЛ'}`;
-      btn.className = state ? 'btn btn-active' : 'btn btn-toggle';
-    }
-
-    // Автообновление
-    function startAutoRefresh() {
-      autoRefreshInterval = setInterval(loadStatus, 2000);
-      document.getElementById('refreshBtn').className = 'btn btn-active';
-    }
-
-    function stopAutoRefresh() {
-      clearInterval(autoRefreshInterval);
-      document.getElementById('refreshBtn').className = 'btn btn-primary';
-    }
-
-    function toggleDataRefresh() {
-      if (autoRefreshInterval) {
-        stopAutoRefresh();
-      } else {
-        startAutoRefresh();
-      }
-    }
-
-    // Отправка команд
-    async function sendCommand(cmd) {
-      try {
-        const response = await fetch('/' + cmd);
-        const data = await response.json();
-        
-        if (data.success) {
-          showNotification(data.message);
-          setTimeout(loadStatus, 500);
-        } else {
-          showNotification('Ошибка: ' + data.message, true);
-        }
-      } catch (error) {
-        showNotification('Ошибка соединения', true);
-      }
-    }
-
-    // Уведомления
-    function showNotification(message, isError = false) {
-      const notification = document.getElementById('notification');
-      notification.textContent = message;
-      notification.className = `notification ${isError ? 'error' : ''} show`;
-      
-      setTimeout(() => {
-        notification.className = 'notification';
-      }, 3000);
-    }
-
-    // Обработка свайпов для мобильных
-    let touchStartX = 0;
-    let touchEndX = 0;
-
-    document.addEventListener('touchstart', e => {
-      touchStartX = e.changedTouches[0].screenX;
-    });
-
-    document.addEventListener('touchend', e => {
-      touchEndX = e.changedTouches[0].screenX;
-      handleSwipe();
-    });
-
-    function handleSwipe() {
-      const swipeMin = 50;
-      if (touchStartX - touchEndX > swipeMin) {
-        if (currentStatus) sendCommand('unlock');
-      } else if (touchEndX - touchStartX > swipeMin) {
-        if (!currentStatus) sendCommand('lock');
-      }
-    }
-  </script>
-</body>
-</html>
-)rawliteral";
 
 // ============================================================================
 // ФУНКЦИИ ПРОТОКОЛА
@@ -1099,47 +377,55 @@ String readFirmwareVersion(uint8_t index) {
     return "N/A";
 }
 
-void updateScooterData() {
+void updateAllScooterData() {
     static unsigned long lastUpdate = 0;
-    if (millis() - lastUpdate < 2000) return;
+    if (millis() - lastUpdate < 3000) return; // Каждые 3 секунды
     lastUpdate = millis();
 
-    // Основные данные (уже были)
+    // Основные данные
     scooterSpeed = readScooterData(INDEX_SPEED) / 10;
-    scooterBattery = readScooterData(INDEX_BATTERY);
-    scooterTemperature = readScooterData(INDEX_BODY_TEMP);
+    batteryTotal = readScooterData(INDEX_BATTERY);
+    bodyTemperature = readScooterData(INDEX_BODY_TEMP);
     totalMileage = readLongData(INDEX_MILEAGE_L, INDEX_MILEAGE_H) / 1000;
-    scooterErrorCode = readScooterData(INDEX_ERROR_CODE);
+    errorCode = readScooterData(INDEX_ERROR_CODE);
     workMode = readScooterData(INDEX_WORK_MODE);
-    speedLimit = readScooterData(INDEX_SPEED_LIMIT) / 10;
-    cruiseControl = (readScooterData(INDEX_CRUISE) == 1);
-
-    // Новые данные
+    
+    // Батареи и пробег
     battery1Capacity = readScooterData(INDEX_BATTERY1_CAP);
     battery2Capacity = readScooterData(INDEX_BATTERY2_CAP);
-    actualRange = readScooterData(INDEX_ACTUAL_RANGE) / 100; // в км
-    predictedRange = readScooterData(INDEX_PREDICT_RANGE) / 100; // в км
-    singleMileage = readScooterData(INDEX_SINGLE_MILEAGE) / 100; // в км
+    actualRange = readScooterData(INDEX_ACTUAL_RANGE) / 100;
+    predictedRange = readScooterData(INDEX_PREDICT_RANGE) / 100;
+    singleMileage = readScooterData(INDEX_SINGLE_MILEAGE) / 100;
     
-    totalOperationTime = readLongData(INDEX_TOTAL_TIME_L, INDEX_TOTAL_TIME_H) / 3600; // в часах
-    totalRideTime = readLongData(INDEX_RIDE_TIME_L, INDEX_RIDE_TIME_H) / 3600; // в часах
-    singleRideTime = readScooterData(INDEX_SINGLE_RIDE_TIME) / 60; // в минутах
+    // Время
+    totalOperationTime = readLongData(INDEX_TOTAL_TIME_L, INDEX_TOTAL_TIME_H) / 3600;
+    totalRideTime = readLongData(INDEX_RIDE_TIME_L, INDEX_RIDE_TIME_H) / 3600;
+    singleRideTime = readScooterData(INDEX_SINGLE_RIDE_TIME) / 60;
     
+    // Температуры
     battery1Temp = readScooterData(INDEX_BAT1_TEMP);
     battery2Temp = readScooterData(INDEX_BAT2_TEMP);
     mosTemp = readScooterData(INDEX_MOS_TEMP);
     
-    driveVoltage = readScooterData(INDEX_DRIVE_VOLTAGE) / 100.0; // в В
-    motorCurrent = readScooterData(INDEX_MOTOR_CURRENT) / 100.0; // в А
-    avgSpeed = readScooterData(INDEX_AVG_SPEED) / 10; // в км/ч
-    scooterPower = readScooterData(INDEX_QUICK_POWER); // в Вт
+    // Электрические параметры
+    driveVoltage = readScooterData(INDEX_DRIVE_VOLTAGE) / 100.0;
+    motorCurrent = readScooterData(INDEX_MOTOR_CURRENT) / 100.0;
+    avgSpeed = readScooterData(INDEX_AVG_SPEED) / 10;
     
+    // Быстрые данные
+    quickSpeed = readScooterData(INDEX_QUICK_SPEED) / 10;
+    quickBattery = readScooterData(INDEX_QUICK_BATTERY);
+    quickPower = readScooterData(INDEX_QUICK_POWER);
+    quickBodyTemp = readScooterData(INDEX_QUICK_BODY_TEMP);
+    
+    // Статусы
     boolStatus = readScooterData(INDEX_BOOL_STATUS);
     alarmCode = readScooterData(INDEX_ALARM_CODE);
+    quickBoolStatus = readScooterData(INDEX_QUICK_BOOL);
     
-    // Строковые данные (читаем реже чтобы не нагружать)
+    // Строковые данные (читаем реже)
     static unsigned long lastStringRead = 0;
-    if (millis() - lastStringRead > 10000) {
+    if (millis() - lastStringRead > 15000) {
         scooterSerial = readStringData(INDEX_SERIAL_NUMBER, 14);
         bmsVersion = readFirmwareVersion(INDEX_BMS_VERSION);
         bms2Version = readFirmwareVersion(INDEX_BMS2_VERSION);
@@ -1148,8 +434,43 @@ void updateScooterData() {
     }
 }
 
+String getBoolStatusDetails() {
+    String status = "";
+    if (boolStatus & 0x0001) status += "Ограничение скорости, ";
+    if (boolStatus & 0x0002) status += "Заблокирован, ";
+    if (boolStatus & 0x0004) status += "Звуковой сигнал, ";
+    if (boolStatus & 0x0200) status += "Батарея 2 подключена, ";
+    if (boolStatus & 0x0800) status += "Активирован, ";
+    return status;
+}
+
+String getAlarmDetails() {
+    switch(alarmCode) {
+        case 9: return "Толкают в заблокированном режиме";
+        case 12: return "Высокое напряжение при торможении";
+        default: return (alarmCode == 0) ? "Нет тревог" : "Тревога: " + String(alarmCode);
+    }
+}
+
+String getLedModeName(uint8_t mode) {
+    switch(mode) {
+        case 0: return "Выключено";
+        case 1: return "Одноцветное дыхание";
+        case 2: return "Всецветное дыхание";
+        case 3: return "Два цвета раздельно";
+        case 4: return "Все цвета раздельно";
+        case 5: return "Одноцветное мерцание";
+        case 6: return "Всецветное мерцание";
+        case 7: return "Полиция 1";
+        case 8: return "Полиция 2";
+        case 9: return "Полиция 3";
+        default: return "Неизвестно";
+    }
+}
+
+
 // ============================================================================
-// ФУНКЦИИ УПРАВЛЕНИЯ
+// ПОЛНЫЙ НАБОР ФУНКЦИЙ УПРАВЛЕНИЯ
 // ============================================================================
 
 void blinkLED(int times) {
@@ -1162,18 +483,40 @@ void blinkLED(int times) {
     }
 }
 
-void sendUnlock() {
-    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_UNLOCK, 0x0001, "Разблокировка");
+
+void sendHeartbeat() {
+    NinebotCommand cmd = createCommand(CMD_HEARTBEAT, INDEX_CRUISE, 0x007C, "Heartbeat");
     Serial.write(cmd.data.data(), cmd.data.size());
-    isLocked = false;
-    blinkLED(2);
 }
 
+void setSpeedLimit(uint16_t limit) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_SPEED_LIMIT, limit, "Лимит скорости");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    speedLimit = limit;
+}
+
+void setBeep(bool enabled) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_BEEP_TOTAL, enabled ? 0x0001 : 0x0000, "Звук");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    beepState = enabled;
+}
+
+void toggleBeep() {
+    beepState = !beepState;
+    setBeep(beepState);
+}
+
+// Основные функции управления
 void sendLock() {
     NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_LOCK, 0x0001, "Блокировка");
     Serial.write(cmd.data.data(), cmd.data.size());
     isLocked = true;
-    blinkLED(1);
+}
+
+void sendUnlock() {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_UNLOCK, 0x0001, "Разблокировка");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    isLocked = false;
 }
 
 void toggleLockState() {
@@ -1184,40 +527,30 @@ void toggleLockState() {
     }
 }
 
-void sendHeartbeat() {
-    NinebotCommand cmd = createCommand(CMD_HEARTBEAT, INDEX_CRUISE, 0x007C, "Heartbeat");
+void toggleSpeedLimit() {
+    // Переключение ограничения скорости
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_LIMIT_SPD, 0x0001, "Переключение лимита скорости");
     Serial.write(cmd.data.data(), cmd.data.size());
+}
+
+void setNormalSpeedLimit(uint16_t limit) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_NORMAL_SPEED, limit, "Лимит Normal режима");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    normalSpeedLimit = limit;
+}
+
+void setSpeedLimitMode(uint16_t limit) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_SPEED_LIMIT, limit, "Лимит Limit режима");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    speedLimitMode = limit;
 }
 
 void setWorkMode(uint8_t mode) {
-    if (mode > 2) return;
-    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_WORK_MODE_CTL, mode, "Режим работы");
-    Serial.write(cmd.data.data(), cmd.data.size());
-    workMode = mode;
-}
-
-void setSpeedLimit(uint16_t limit) {
-    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_SPEED_LIMIT, limit, "Лимит скорости");
-    Serial.write(cmd.data.data(), cmd.data.size());
-    speedLimit = limit;
-}
-
-void setHeadlight(bool enabled) {
-    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_HEADLIGHT, enabled ? 0x0001 : 0x0000, "Фары");
-    Serial.write(cmd.data.data(), cmd.data.size());
-    headlightState = enabled;
-}
-
-void setBeep(bool enabled) {
-    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_BEEP_TOTAL, enabled ? 0x0001 : 0x0000, "Звук");
-    Serial.write(cmd.data.data(), cmd.data.size());
-    beepState = enabled;
-}
-
-void setCruiseControl(bool enabled) {
-    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_CRUISE, enabled ? 0x0001 : 0x0000, "Круиз-контроль");
-    Serial.write(cmd.data.data(), cmd.data.size());
-    cruiseControl = enabled;
+    if (mode <= 2) {
+        NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_WORK_MODE_CTL, mode, "Режим работы");
+        Serial.write(cmd.data.data(), cmd.data.size());
+        workMode = mode;
+    }
 }
 
 void setEngineState(bool state) {
@@ -1226,20 +559,131 @@ void setEngineState(bool state) {
     engineState = state;
 }
 
-void toggleHeadlight() {
-    headlightState = !headlightState;
-    setHeadlight(headlightState);
+void rebootSystem() {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_REBOOT, 0x0001, "Перезагрузка");
+    Serial.write(cmd.data.data(), cmd.data.size());
 }
 
-void toggleBeep() {
-    beepState = !beepState;
-    setBeep(beepState);
+void powerOff() {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_POWER_OFF, 0x0001, "Выключение");
+    Serial.write(cmd.data.data(), cmd.data.size());
+}
+
+void setCruiseControl(bool enabled) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_CRUISE, enabled ? 0x0001 : 0x0000, "Круиз-контроль");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    cruiseControl = enabled;
 }
 
 void toggleCruiseControl() {
     cruiseControl = !cruiseControl;
     setCruiseControl(cruiseControl);
 }
+// Функции для проката
+void findScooter() {
+    // Включение мигания фар и звука для поиска
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_FIND_SCOOTER, 0x0001, "Поиск самоката");
+    Serial.write(cmd.data.data(), cmd.data.size());
+}
+
+void setHeadlight(bool enabled) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_HEADLIGHT, enabled ? 0x0001 : 0x0000, "Фары");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    headlightState = enabled;
+}
+
+void toggleHeadlight() {
+    headlightState = !headlightState;
+    setHeadlight(headlightState);
+}
+
+void setBeepAlarm(bool enabled) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_BEEP_ALARM, enabled ? 0x0001 : 0x0000, "Звук сигнала");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    beepAlarmState = enabled;
+}
+
+void setBeepTotal(bool enabled) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_BEEP_TOTAL, enabled ? 0x0001 : 0x0000, "Общий звук");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    beepTotalState = enabled;
+}
+
+// Управление подсветкой
+void setLedMode(uint8_t mode) {
+    if (mode <= 9) {
+        NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_LED_MODE, mode, "Режим подсветки");
+        Serial.write(cmd.data.data(), cmd.data.size());
+        ledMode = mode;
+    }
+}
+
+void setLedColor(uint8_t colorIndex, uint16_t color) {
+    uint8_t index = 0;
+    switch(colorIndex) {
+        case 1: index = INDEX_LED_COLOR1; break;
+        case 2: index = INDEX_LED_COLOR2; break;
+        case 3: index = INDEX_LED_COLOR3; break;
+        case 4: index = INDEX_LED_COLOR4; break;
+        default: return;
+    }
+    
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, index, color, "Цвет подсветки");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    
+    switch(colorIndex) {
+        case 1: ledColor1 = color; break;
+        case 2: ledColor2 = color; break;
+        case 3: ledColor3 = color; break;
+        case 4: ledColor4 = color; break;
+    }
+}
+
+// Настройки функций (битовые маски)
+void setFunBoolSettings(uint16_t settings) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_FUN_BOOL, settings, "Настройки функций");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    funBoolSettings = settings;
+}
+
+void setFunBool1Settings(uint16_t settings) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_FUN_BOOL_1, settings, "Настройки функций 1");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    funBool1Settings = settings;
+}
+
+void setFunBool2Settings(uint16_t settings) {
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, INDEX_FUN_BOOL_2, settings, "Настройки функций 2");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    funBool2Settings = settings;
+}
+
+// Конкретные настройки функций
+void setHeadlightAlwaysOn(bool enabled) {
+    if (enabled) funBool1Settings |= 0x0001;
+    else funBool1Settings &= ~0x0001;
+    setFunBool1Settings(funBool1Settings);
+}
+
+void setSpeedInMPH(bool enabled) {
+    if (enabled) funBool1Settings |= 0x0040;
+    else funBool1Settings &= ~0x0040;
+    setFunBool1Settings(funBool1Settings);
+}
+
+void setNoAlarmWhenLocked(bool enabled) {
+    if (enabled) funBool1Settings |= 0x0020;
+    else funBool1Settings &= ~0x0020;
+    setFunBool1Settings(funBool1Settings);
+}
+
+void setBluetoothBroadcast(bool enabled) {
+    if (enabled) funBool1Settings |= 0x0400;
+    else funBool1Settings &= ~0x0400;
+    setFunBool1Settings(funBool1Settings);
+}
+
+
 
 void handleButton() {
     int reading = digitalRead(BUTTON_PIN);
@@ -1260,7 +704,14 @@ void handleButton() {
 // ============================================================================
 
 void handleRoot() {
-    server.send(200, "text/html", html_page);
+    File file = LittleFS.open("/index.html", "r");
+    if (!file) {
+        server.send(500, "text/plain", "Ошибка загрузки HTML");
+        return;
+    }
+    
+    server.streamFile(file, "text/html");
+    file.close();
 }
 
 void sendSuccess(const char* message) {
@@ -1368,19 +819,118 @@ void handleNotFound() {
     server.send(404, "application/json", response);
 }
 
+void handleLedMode() {
+    if (server.hasArg("mode")) {
+        uint8_t mode = server.arg("mode").toInt();
+        setLedMode(mode);
+        sendSuccess("Режим подсветки установлен");
+    } else {
+        sendSuccess("Не указан режим");
+    }
+}
+
+void handleLedColor() {
+    if (server.hasArg("color") && server.hasArg("index")) {
+        uint8_t index = server.arg("index").toInt();
+        uint16_t color = strtol(server.arg("color").c_str(), NULL, 16);
+        setLedColor(index, color);
+        sendSuccess("Цвет установлен");
+    } else {
+        sendSuccess("Не указаны параметры цвета");
+    }
+}
+
+void handleFindScooter() {
+    findScooter();
+    sendSuccess("Поиск самоката активирован");
+}
+
+void handleReboot() {
+    rebootSystem();
+    sendSuccess("Система перезагружается");
+}
+
+void handlePowerOff() {
+    powerOff();
+    sendSuccess("Система выключается");
+}
+
+void handleToggleLimit() {
+    toggleSpeedLimit();
+    sendSuccess("Лимит скорости переключен");
+}
+
+// Обработчики для настроек функций
+void handleHeadlightAlwaysOn() {
+    bool enabled = server.hasArg("enabled") ? server.arg("enabled").toInt() : true;
+    setHeadlightAlwaysOn(enabled);
+    sendSuccess(enabled ? "Фары всегда включены" : "Фары по умолчанию");
+}
+
+void handleSpeedMPH() {
+    bool enabled = server.hasArg("enabled") ? server.arg("enabled").toInt() : true;
+    setSpeedInMPH(enabled);
+    sendSuccess(enabled ? "Скорость в MPH" : "Скорость в KM/H");
+}
+
+void handleNoAlarmLock() {
+    bool enabled = server.hasArg("enabled") ? server.arg("enabled").toInt() : true;
+    setNoAlarmWhenLocked(enabled);
+    sendSuccess(enabled ? "Тревога при блокировке отключена" : "Тревога при блокировке включена");
+}
+
+void handleBTBroadcast() {
+    bool enabled = server.hasArg("enabled") ? server.arg("enabled").toInt() : true;
+    setBluetoothBroadcast(enabled);
+    sendSuccess(enabled ? "Bluetooth broadcast включен" : "Bluetooth broadcast выключен");
+}
+
 // ============================================================================
 // SETUP И LOOP
 // ============================================================================
 
 void setup() {
     Serial.begin(115200);
+    
+    // Инициализация LittleFS
+    if (!LittleFS.begin()) {
+        Serial.println("❌ Ошибка инициализации LittleFS");
+        Serial.println("Проверьте загрузку файлов через 'Upload Filesystem Image'");
+        // Можно продолжить работу, но без веб-интерфейса
+    } else {
+        Serial.println("✅ LittleFS инициализирована");
+        
+        // Выводим список файлов для отладки
+        Dir dir = LittleFS.openDir("/");
+        while (dir.next()) {
+            Serial.printf("Файл: %s, Размер: %d байт\n", 
+                         dir.fileName().c_str(), dir.fileSize());
+        }
+    }
+
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid, password);
 
-    // Регистрация обработчиков
-    server.on("/", handleRoot);
+    // ИЗМЕНЕННЫЙ обработчик главной страницы
+    server.on("/", []() {
+        if (!LittleFS.exists("/index.html")) {
+            server.send(500, "text/plain", "HTML файл не найден. Загрузите файлы в LittleFS.");
+            return;
+        }
+        
+        File file = LittleFS.open("/index.html", "r");
+        if (!file) {
+            server.send(500, "text/plain", "Ошибка открытия HTML файла");
+            return;
+        }
+        
+        server.streamFile(file, "text/html");
+        file.close();
+    });
+
+    // ВСЕ остальные обработчики остаются без изменений
     server.on("/unlock", handleUnlock);
     server.on("/lock", handleLock);
     server.on("/toggle", handleToggle);
@@ -1404,6 +954,19 @@ void setup() {
     server.on("/engine_on", handleEngineOn);
     server.on("/engine_off", handleEngineOff);
 
+    server.on("/led_mode", handleLedMode);
+    server.on("/led_color", handleLedColor);
+    server.on("/find_scooter", handleFindScooter);
+    server.on("/reboot", handleReboot);
+    server.on("/power_off", handlePowerOff);
+    server.on("/toggle_limit", handleToggleLimit);
+    
+    // Обработчики для конкретных настроек
+    server.on("/headlight_always_on", handleHeadlightAlwaysOn);
+    server.on("/speed_mph", handleSpeedMPH);
+    server.on("/no_alarm_lock", handleNoAlarmLock);
+    server.on("/bt_broadcast", handleBTBroadcast);
+
     server.onNotFound(handleNotFound);
     server.begin();
 
@@ -1413,6 +976,9 @@ void setup() {
     Serial.println("Ninebot ES Controller запущен");
     Serial.print("AP IP address: ");
     Serial.println(WiFi.softAPIP());
+    
+    // Проверяем память после инициализации
+    Serial.printf("Свободная RAM: %d байт\n", ESP.getFreeHeap());
 }
 
 void loop() {
@@ -1425,7 +991,7 @@ void loop() {
     }
     
     // Обновление данных самоката
-    updateScooterData();
+    updateAllScooterData();
     
     delay(10);
 }
