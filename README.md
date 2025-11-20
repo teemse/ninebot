@@ -93,8 +93,8 @@ Ninebot ES Board                    ESP8266 (Huzzah)
 
 ### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/your-username/ninebot-es-controller.git
-cd ninebot-es-controller
+git clone https://github.com/teemse/ninebot.git
+cd ninebot
 ```
 
 ### 2. PlatformIO (рекомендуется)
