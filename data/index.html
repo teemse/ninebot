@@ -388,6 +388,93 @@
       color: #2d3436;
     }
 
+    /* Стили для исследования */
+    .scan-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .scan-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .scan-btn.safe {
+      background: #00b894;
+      color: white;
+    }
+
+    .scan-btn.warning {
+      background: #fdcb6e;
+      color: #2d3436;
+    }
+
+    .scan-btn.danger {
+      background: #d63031;
+      color: white;
+    }
+
+    .scan-progress {
+      width: 100%;
+      height: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+
+    .scan-progress-bar {
+      height: 100%;
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      transition: width 0.3s ease;
+    }
+
+    .scan-results {
+      max-height: 400px;
+      overflow-y: auto;
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+
+    .scan-result-item {
+      padding: 10px;
+      border-bottom: 1px solid #dee2e6;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .scan-result-item.found {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .scan-result-item.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .manual-test {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .manual-test input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-family: monospace;
+    }
+
     .notification {
       position: fixed;
       top: 20px;
@@ -454,6 +541,14 @@
         align-items: flex-start;
         gap: 10px;
       }
+
+      .scan-controls {
+        flex-direction: column;
+      }
+
+      .manual-test {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 480px) {
@@ -496,6 +591,7 @@
         <button class="tab-button" onclick="switchTab('lights')">Подсветка</button>
         <button class="tab-button" onclick="switchTab('settings')">Настройки</button>
         <button class="tab-button" onclick="switchTab('system')">Система</button>
+        <button class="tab-button" onclick="switchTab('research')">Исследование</button>
       </div>
 
       <!-- Основная вкладка -->
@@ -592,6 +688,72 @@
             <button class="btn btn-toggle" onclick="sendCommand('engine_on')" id="engineBtn">
               <span>⚡</span> Двигатель ВКЛ
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка исследования -->
+      <div id="research-tab" class="tab-content">
+        <div class="dashboard">
+          <!-- Сканирование регистров -->
+          <div class="card">
+            <h3>🔍 Сканирование регистров</h3>
+            <p style="margin-bottom: 20px; color: #666;">
+              Обнаружение новых команд и регистров самоката
+            </p>
+
+            <div class="scan-controls">
+              <button class="scan-btn safe" onclick="startSafeScan()">
+                🔒 Безопасное сканирование (чтение)
+              </button>
+              <button class="scan-btn warning" onclick="startBruteForceScan()">
+                ⚠️ Брутфорс сканирование (запись)
+              </button>
+              <button class="scan-btn danger" onclick="startDeepScan()">
+                🚨 Глубокое сканирование
+              </button>
+            </div>
+
+            <div class="scan-progress">
+              <div class="scan-progress-bar" id="scanProgress" style="width: 0%"></div>
+            </div>
+
+            <div style="text-align: center; margin: 10px 0;">
+              <span id="scanStatus">Готов к сканированию</span>
+              <span id="scanProgressText">0/256</span>
+            </div>
+
+            <div class="manual-test">
+              <input type="text" id="manualIndex" placeholder="Индекс (hex, например: 0x70)" style="font-family: monospace">
+              <input type="text" id="manualValue" placeholder="Значение (hex, например: 0x0001)" style="font-family: monospace">
+              <button class="btn btn-primary" onclick="manualTest()">Тестировать</button>
+            </div>
+
+            <div class="scan-results" id="scanResults">
+              <!-- Результаты сканирования будут здесь -->
+            </div>
+          </div>
+
+          <!-- Найденные регистры -->
+          <div class="card">
+            <h3>🎯 Найденные регистры</h3>
+            <div id="foundRegisters" style="max-height: 300px; overflow-y: auto;">
+              <p style="color: #666; text-align: center; padding: 20px;">
+                Найденные регистры появятся здесь после сканирования
+              </p>
+            </div>
+          </div>
+
+          <!-- Лог пакетов -->
+          <div class="card">
+            <h3>📋 Лог пакетов</h3>
+            <div style="margin-bottom: 15px;">
+              <button class="btn btn-primary" onclick="startPacketLog()">Начать логирование</button>
+              <button class="btn btn-danger" onclick="stopPacketLog()">Остановить</button>
+              <button class="btn" onclick="clearPacketLog()" style="background: #636e72; color: white;">Очистить</button>
+            </div>
+            <div id="packetLog" style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.8rem;">
+            </div>
           </div>
         </div>
       </div>
@@ -912,6 +1074,9 @@
     let autoRefreshInterval = null;
     let currentStatus = true;
     let currentLedMode = 1;
+    let scanInProgress = false;
+    let packetLogging = false;
+    let packetLog = [];
 
     // Инициализация
     document.addEventListener('DOMContentLoaded', function() {
@@ -919,6 +1084,208 @@
       startAutoRefresh();
       updateLedModeButtons();
     });
+
+
+// Безопасное сканирование (только чтение)
+    async function startSafeScan() {
+        if (scanInProgress) {
+            showNotification('Сканирование уже выполняется', true);
+            return;
+        }
+
+        scanInProgress = true;
+        const results = document.getElementById('scanResults');
+        results.innerHTML = '';
+        updateScanProgress(0, 256);
+
+        let foundCount = 0;
+
+        for (let index = 0; index <= 0xFF; index++) {
+            if (!scanInProgress) break;
+
+            updateScanProgress(index + 1, 256);
+            document.getElementById('scanStatus').textContent = `Сканирование: 0x${index.toString(16).toUpperCase()}`;
+
+            try {
+                const response = await fetch(`/scan_read?index=0x${index.toString(16)}`);
+                const data = await response.json();
+
+                if (data.success && data.value !== undefined) {
+                    foundCount++;
+                    addScanResult(`🎯 0x${index.toString(16).toUpperCase()}: ${data.value} (0x${data.value.toString(16)})`, 'found');
+                    addFoundRegister(index, data.value, 'read');
+                }
+            } catch (error) {
+                addScanResult(`❌ 0x${index.toString(16).toUpperCase()}: Ошибка чтения`, 'error');
+            }
+
+            // Задержка между запросами
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        scanInProgress = false;
+        showNotification(`Безопасное сканирование завершено! Найдено: ${foundCount} регистров`);
+    }
+
+    // Брутфорс сканирование (запись с ответом)
+    async function startBruteForceScan() {
+        if (!confirm('⚠️ ВНИМАНИЕ: Брутфорс сканирование может вызвать непредсказуемое поведение самоката! Продолжить?')) {
+            return;
+        }
+
+        if (scanInProgress) {
+            showNotification('Сканирование уже выполняется', true);
+            return;
+        }
+
+        scanInProgress = true;
+        const results = document.getElementById('scanResults');
+        results.innerHTML = '';
+        updateScanProgress(0, 256);
+
+        let foundCount = 0;
+
+        for (let index = 0; index <= 0xFF; index++) {
+            if (!scanInProgress) break;
+
+            updateScanProgress(index + 1, 256);
+            document.getElementById('scanStatus').textContent = `Брутфорс: 0x${index.toString(16).toUpperCase()}`;
+
+            try {
+                const response = await fetch(`/scan_write?index=0x${index.toString(16)}&value=0x0001`);
+                const data = await response.json();
+
+                if (data.success) {
+                    foundCount++;
+                    addScanResult(`🎯 0x${index.toString(16).toUpperCase()}: Записываемый регистр!`, 'found');
+                    addFoundRegister(index, 1, 'write');
+                }
+            } catch (error) {
+                addScanResult(`❌ 0x${index.toString(16).toUpperCase()}: Ошибка записи`, 'error');
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        scanInProgress = false;
+        showNotification(`Брутфорс сканирование завершено! Найдено: ${foundCount} регистров`);
+    }
+
+    // Глубокое сканирование
+    async function startDeepScan() {
+        if (!confirm('🚨 ОПАСНО: Глубокое сканирование может повредить настройки самоката! Продолжить?')) {
+            return;
+        }
+        showNotification('Глубокое сканирование пока не реализовано', true);
+    }
+
+    // Ручное тестирование
+    async function manualTest() {
+        const indexInput = document.getElementById('manualIndex').value;
+        const valueInput = document.getElementById('manualValue').value;
+
+        if (!indexInput) {
+            showNotification('Введите индекс для тестирования', true);
+            return;
+        }
+
+        // Преобразуем индекс в число
+        const index = parseInt(indexInput.replace('0x', ''), 16);
+        if (isNaN(index)) {
+            showNotification('Неверный формат индекса', true);
+            return;
+        }
+
+        try {
+            let response, data;
+
+            if (valueInput) {
+                // Тест записи
+                const value = parseInt(valueInput.replace('0x', ''), 16);
+                response = await fetch(`/scan_write?index=0x${index.toString(16)}&value=0x${value.toString(16)}`);
+            } else {
+                // Тест чтения
+                response = await fetch(`/scan_read?index=0x${index.toString(16)}`);
+            }
+
+            data = await response.json();
+            
+            if (data.success) {
+                showNotification(`✅ Успех! ${valueInput ? 'Запись' : 'Чтение'} выполнена`);
+                addScanResult(`🔧 0x${index.toString(16).toUpperCase()}: ${valueInput ? `Запись 0x${value.toString(16)}` : `Чтение ${data.value}`}`, 'found');
+            } else {
+                showNotification(`❌ Ошибка: ${data.message}`, true);
+            }
+        } catch (error) {
+            showNotification('Ошибка соединения', true);
+        }
+    }
+
+    // Логирование пакетов
+    function startPacketLog() {
+        packetLogging = true;
+        packetLog = [];
+        showNotification('Логирование пакетов запущено');
+        
+        // Симуляция получения пакетов (в реальности будет через WebSocket)
+        simulatePacketLog();
+    }
+
+    function stopPacketLog() {
+        packetLogging = false;
+        showNotification('Логирование пакетов остановлено');
+    }
+
+    function clearPacketLog() {
+        document.getElementById('packetLog').innerHTML = '';
+    }
+
+    function simulatePacketLog() {
+        if (!packetLogging) return;
+        
+        // В реальности здесь будет WebSocket соединение
+        setTimeout(() => {
+            if (packetLogging) {
+                const logEntry = `[${new Date().toLocaleTimeString()}] Пакет: 5A A5 02 3D 20 04 3E 36 01`;
+                packetLog.push(logEntry);
+                
+                const logElement = document.getElementById('packetLog');
+                logElement.innerHTML = packetLog.slice(-10).join('<br>');
+                logElement.scrollTop = logElement.scrollHeight;
+                
+                simulatePacketLog();
+            }
+        }, 1000);
+    }
+
+    // Вспомогательные функции
+    function updateScanProgress(current, total) {
+        const progress = (current / total) * 100;
+        document.getElementById('scanProgress').style.width = `${progress}%`;
+        document.getElementById('scanProgressText').textContent = `${current}/${total}`;
+    }
+
+    function addScanResult(message, type = '') {
+        const results = document.getElementById('scanResults');
+        const item = document.createElement('div');
+        item.className = `scan-result-item ${type}`;
+        item.textContent = message;
+        results.appendChild(item);
+        results.scrollTop = results.scrollHeight;
+    }
+
+    function addFoundRegister(index, value, type) {
+        const foundElement = document.getElementById('foundRegisters');
+        const registerInfo = document.createElement('div');
+        registerInfo.style.padding = '8px';
+        registerInfo.style.borderBottom = '1px solid #eee';
+        registerInfo.style.fontFamily = 'monospace';
+        
+        const typeIcon = type === 'read' ? '📖' : '✏️';
+        registerInfo.innerHTML = `${typeIcon} <strong>0x${index.toString(16).toUpperCase()}</strong>: ${value} <span style="color: #666;">(${type})</span>`;
+        
+        foundElement.appendChild(registerInfo);
+    }
 
     // Переключение вкладок
     function switchTab(tabName) {
@@ -1279,6 +1646,232 @@
         if (!currentStatus) sendCommand('lock');
       }
     }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <script>
+    // ============================================================================
+    // НОВЫЕ ФУНКЦИИ ДЛЯ ИССЛЕДОВАНИЯ
+    // ============================================================================
+
+    // Безопасное сканирование (только чтение)
+    async function startSafeScan() {
+        if (scanInProgress) {
+            showNotification('Сканирование уже выполняется', true);
+            return;
+        }
+
+        scanInProgress = true;
+        const results = document.getElementById('scanResults');
+        results.innerHTML = '';
+        updateScanProgress(0, 256);
+
+        let foundCount = 0;
+
+        for (let index = 0; index <= 0xFF; index++) {
+            if (!scanInProgress) break;
+
+            updateScanProgress(index + 1, 256);
+            document.getElementById('scanStatus').textContent = `Сканирование: 0x${index.toString(16).toUpperCase()}`;
+
+            try {
+                const response = await fetch(`/scan_read?index=0x${index.toString(16)}`);
+                const data = await response.json();
+
+                if (data.success && data.value !== undefined) {
+                    foundCount++;
+                    addScanResult(`🎯 0x${index.toString(16).toUpperCase()}: ${data.value} (0x${data.value.toString(16)})`, 'found');
+                    addFoundRegister(index, data.value, 'read');
+                }
+            } catch (error) {
+                addScanResult(`❌ 0x${index.toString(16).toUpperCase()}: Ошибка чтения`, 'error');
+            }
+
+            // Задержка между запросами
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        scanInProgress = false;
+        showNotification(`Безопасное сканирование завершено! Найдено: ${foundCount} регистров`);
+    }
+
+    // Брутфорс сканирование (запись с ответом)
+    async function startBruteForceScan() {
+        if (!confirm('⚠️ ВНИМАНИЕ: Брутфорс сканирование может вызвать непредсказуемое поведение самоката! Продолжить?')) {
+            return;
+        }
+
+        if (scanInProgress) {
+            showNotification('Сканирование уже выполняется', true);
+            return;
+        }
+
+        scanInProgress = true;
+        const results = document.getElementById('scanResults');
+        results.innerHTML = '';
+        updateScanProgress(0, 256);
+
+        let foundCount = 0;
+
+        for (let index = 0; index <= 0xFF; index++) {
+            if (!scanInProgress) break;
+
+            updateScanProgress(index + 1, 256);
+            document.getElementById('scanStatus').textContent = `Брутфорс: 0x${index.toString(16).toUpperCase()}`;
+
+            try {
+                const response = await fetch(`/scan_write?index=0x${index.toString(16)}&value=0x0001`);
+                const data = await response.json();
+
+                if (data.success) {
+                    foundCount++;
+                    addScanResult(`🎯 0x${index.toString(16).toUpperCase()}: Записываемый регистр!`, 'found');
+                    addFoundRegister(index, 1, 'write');
+                }
+            } catch (error) {
+                addScanResult(`❌ 0x${index.toString(16).toUpperCase()}: Ошибка записи`, 'error');
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        scanInProgress = false;
+        showNotification(`Брутфорс сканирование завершено! Найдено: ${foundCount} регистров`);
+    }
+
+    // Глубокое сканирование
+    async function startDeepScan() {
+        if (!confirm('🚨 ОПАСНО: Глубокое сканирование может повредить настройки самоката! Продолжить?')) {
+            return;
+        }
+        showNotification('Глубокое сканирование пока не реализовано', true);
+    }
+
+    // Ручное тестирование
+    async function manualTest() {
+        const indexInput = document.getElementById('manualIndex').value;
+        const valueInput = document.getElementById('manualValue').value;
+
+        if (!indexInput) {
+            showNotification('Введите индекс для тестирования', true);
+            return;
+        }
+
+        // Преобразуем индекс в число
+        const index = parseInt(indexInput.replace('0x', ''), 16);
+        if (isNaN(index)) {
+            showNotification('Неверный формат индекса', true);
+            return;
+        }
+
+        try {
+            let response, data;
+
+            if (valueInput) {
+                // Тест записи
+                const value = parseInt(valueInput.replace('0x', ''), 16);
+                response = await fetch(`/scan_write?index=0x${index.toString(16)}&value=0x${value.toString(16)}`);
+            } else {
+                // Тест чтения
+                response = await fetch(`/scan_read?index=0x${index.toString(16)}`);
+            }
+
+            data = await response.json();
+            
+            if (data.success) {
+                showNotification(`✅ Успех! ${valueInput ? 'Запись' : 'Чтение'} выполнена`);
+                addScanResult(`🔧 0x${index.toString(16).toUpperCase()}: ${valueInput ? `Запись 0x${value.toString(16)}` : `Чтение ${data.value}`}`, 'found');
+            } else {
+                showNotification(`❌ Ошибка: ${data.message}`, true);
+            }
+        } catch (error) {
+            showNotification('Ошибка соединения', true);
+        }
+    }
+
+    // Логирование пакетов
+    function startPacketLog() {
+        packetLogging = true;
+        packetLog = [];
+        showNotification('Логирование пакетов запущено');
+        
+        // Симуляция получения пакетов (в реальности будет через WebSocket)
+        simulatePacketLog();
+    }
+
+    function stopPacketLog() {
+        packetLogging = false;
+        showNotification('Логирование пакетов остановлено');
+    }
+
+    function clearPacketLog() {
+        document.getElementById('packetLog').innerHTML = '';
+    }
+
+    function simulatePacketLog() {
+        if (!packetLogging) return;
+        
+        // В реальности здесь будет WebSocket соединение
+        setTimeout(() => {
+            if (packetLogging) {
+                const logEntry = `[${new Date().toLocaleTimeString()}] Пакет: 5A A5 02 3D 20 04 3E 36 01`;
+                packetLog.push(logEntry);
+                
+                const logElement = document.getElementById('packetLog');
+                logElement.innerHTML = packetLog.slice(-10).join('<br>');
+                logElement.scrollTop = logElement.scrollHeight;
+                
+                simulatePacketLog();
+            }
+        }, 1000);
+    }
+
+    // Вспомогательные функции
+    function updateScanProgress(current, total) {
+        const progress = (current / total) * 100;
+        document.getElementById('scanProgress').style.width = `${progress}%`;
+        document.getElementById('scanProgressText').textContent = `${current}/${total}`;
+    }
+
+    function addScanResult(message, type = '') {
+        const results = document.getElementById('scanResults');
+        const item = document.createElement('div');
+        item.className = `scan-result-item ${type}`;
+        item.textContent = message;
+        results.appendChild(item);
+        results.scrollTop = results.scrollHeight;
+    }
+
+    function addFoundRegister(index, value, type) {
+        const foundElement = document.getElementById('foundRegisters');
+        const registerInfo = document.createElement('div');
+        registerInfo.style.padding = '8px';
+        registerInfo.style.borderBottom = '1px solid #eee';
+        registerInfo.style.fontFamily = 'monospace';
+        
+        const typeIcon = type === 'read' ? '📖' : '✏️';
+        registerInfo.innerHTML = `${typeIcon} <strong>0x${index.toString(16).toUpperCase()}</strong>: ${value} <span style="color: #666;">(${type})</span>`;
+        
+        foundElement.appendChild(registerInfo);
+    }
+
+    // Остальной JavaScript код остается без изменений
+    // ... (ваш существующий JavaScript)
+
   </script>
 </body>
 </html>

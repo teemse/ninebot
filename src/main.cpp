@@ -221,6 +221,34 @@ uint16_t cpuIdF = 0;
 
 
 // ============================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================================
+
+String getValueType(int value) {
+    if (value == 0 || value == 1) {
+        return "BOOL";
+    } else if (value >= 0 && value <= 100) {
+        return "PERCENT";
+    } else if (value >= 100 && value <= 300) {
+        return "SPEED_X10";
+    } else if (value >= 1000 && value <= 30000) {
+        return "DISTANCE";
+    } else if (value >= 200 && value <= 500) {
+        return "VOLTAGE_X100";
+    } else if (value >= -20 && value <= 50) {
+        return "TEMPERATURE";
+    } else if ((value & 0xFF) == value) {
+        return "BYTE";
+    } else if (value >= 0x0000 && value <= 0xFFFF) {
+        return "UINT16";
+    } else {
+        return "UNKNOWN";
+    }
+}
+
+
+
+// ============================================================================
 // ФУНКЦИИ ПРОТОКОЛА
 // ============================================================================
 
@@ -295,6 +323,38 @@ String getBoolStatusString() {
     return status;
 }
 
+bool testWriteWithResponse(uint8_t index, uint16_t testValue) {
+    // Очищаем буфер serial
+    while (Serial.available() > 0) Serial.read();
+    
+    // Отправляем команду записи С ОТВЕТОМ
+    NinebotCommand cmd = createCommand(CMD_CMAP_WR, index, testValue, "Test write with response");
+    Serial.write(cmd.data.data(), cmd.data.size());
+    Serial.flush();
+    
+    // Ждем ответа (максимум 500мс)
+    unsigned long startTime = millis();
+    while (Serial.available() < 10 && millis() - startTime < 500) {
+        delay(10);
+    }
+    
+    // Проверяем ответ
+    if (Serial.available() >= 10) {
+        uint8_t response[20];
+        int bytesRead = Serial.readBytes(response, min(Serial.available(), 20));
+        
+        // Проверяем что это ответ на запись (CMD_CMAP_ACK_WR)
+        if (response[0] == 0x5A && response[1] == 0xA5 && response[5] == CMD_CMAP_ACK_WR) {
+            uint8_t responseIndex = response[6];
+            uint8_t successFlag = (bytesRead > 7) ? response[7] : 0;
+            
+            return (successFlag == 0x01); // 0x01 = успешная запись
+        }
+    }
+    
+    return false;
+}
+
 // Анализ кодов тревоги
 String getAlarmString() {
     switch(alarmCode) {
@@ -305,23 +365,20 @@ String getAlarmString() {
 }
 
 int readScooterData(uint8_t index, uint8_t readLength = 2) {
-    // Создаем команду чтения
-    NinebotCommand cmd = createCommand(CMD_CMAP_RD, index, readLength, "Чтение данных");
-    
     // Очищаем буфер serial
     while (Serial.available() > 0) Serial.read();
     
-    // Отправляем команду
+    // Отправляем команду чтения
+    NinebotCommand cmd = createCommand(CMD_CMAP_RD, index, readLength, "Read data");
     Serial.write(cmd.data.data(), cmd.data.size());
     Serial.flush();
     
-    // Ждем ответа
+    // Ждем ответа с таймаутом
     unsigned long startTime = millis();
     while (Serial.available() < 10 && millis() - startTime < 500) {
         delay(10);
     }
     
-    // Читаем ответ
     if (Serial.available() >= 10) {
         uint8_t response[20];
         int bytesRead = Serial.readBytes(response, min(Serial.available(), 20));
@@ -886,6 +943,85 @@ void handleBTBroadcast() {
 }
 
 // ============================================================================
+// ОБРАБОТЧИКИ ДЛЯ СКАНИРОВАНИЯ РЕГИСТРОВ
+// ============================================================================
+
+void handleScanRead() {
+    if (!server.hasArg("index")) {
+        server.send(400, "application/json", "{\"success\":false,\"message\":\"Missing index parameter\"}");
+        return;
+    }
+    
+    String indexStr = server.arg("index");
+    uint8_t index = (uint8_t)strtol(indexStr.c_str(), NULL, 16);
+        
+    // Пробуем прочитать регистр
+    int value = readScooterData(index, 2);
+    
+    if (value != -1) {
+        String response = "{";
+        response += "\"success\":true,";
+        response += "\"index\":\"" + indexStr + "\",";
+        response += "\"value\":" + String(value) + ",";
+        response += "\"valueHex\":\"0x" + String(value, HEX) + "\",";
+        response += "\"type\":\"" + getValueType(value) + "\"";
+        response += "}";
+        
+        server.send(200, "application/json", response);
+    } else {
+        String response = "{";
+        response += "\"success\":false,";
+        response += "\"index\":\"" + indexStr + "\",";
+        response += "\"message\":\"Read failed or timeout\"";
+        response += "}";
+        
+        server.send(200, "application/json", response);
+    }
+}
+
+void handleScanWrite() {
+    if (!server.hasArg("index") || !server.hasArg("value")) {
+        server.send(400, "application/json", "{\"success\":false,\"message\":\"Missing index or value parameter\"}");
+        return;
+    }
+    
+    String indexStr = server.arg("index");
+    String valueStr = server.arg("value");
+    
+    uint8_t index = (uint8_t)strtol(indexStr.c_str(), NULL, 16);
+    uint16_t value = (uint16_t)strtol(valueStr.c_str(), NULL, 16);
+        
+    // Пробуем записать регистр с ответом
+    bool writeSuccess = testWriteWithResponse(index, value);
+    
+    if (writeSuccess) {
+        // Читаем значение после записи для подтверждения
+        delay(50);
+        int readBackValue = readScooterData(index, 2);
+        
+        String response = "{";
+        response += "\"success\":true,";
+        response += "\"index\":\"" + indexStr + "\",";
+        response += "\"valueWritten\":\"0x" + String(value, HEX) + "\",";
+        response += "\"valueReadback\":" + String(readBackValue) + ",";
+        response += "\"valueReadbackHex\":\"0x" + String(readBackValue, HEX) + "\",";
+        response += "\"message\":\"Write successful\"";
+        response += "}";
+        
+        server.send(200, "application/json", response);
+    } else {
+        String response = "{";
+        response += "\"success\":false,";
+        response += "\"index\":\"" + indexStr + "\",";
+        response += "\"value\":\"0x" + String(value, HEX) + "\",";
+        response += "\"message\":\"Write failed or no response\"";
+        response += "}";
+        
+        server.send(200, "application/json", response);
+    }
+}
+
+// ============================================================================
 // SETUP И LOOP
 // ============================================================================
 
@@ -894,18 +1030,9 @@ void setup() {
     
     // Инициализация LittleFS
     if (!LittleFS.begin()) {
-        Serial.println("❌ Ошибка инициализации LittleFS");
-        Serial.println("Проверьте загрузку файлов через 'Upload Filesystem Image'");
-        // Можно продолжить работу, но без веб-интерфейса
     } else {
-        Serial.println("✅ LittleFS инициализирована");
-        
         // Выводим список файлов для отладки
         Dir dir = LittleFS.openDir("/");
-        while (dir.next()) {
-            Serial.printf("Файл: %s, Размер: %d байт\n", 
-                         dir.fileName().c_str(), dir.fileSize());
-        }
     }
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -966,19 +1093,14 @@ void setup() {
     server.on("/speed_mph", handleSpeedMPH);
     server.on("/no_alarm_lock", handleNoAlarmLock);
     server.on("/bt_broadcast", handleBTBroadcast);
+    server.on("/scan_read", handleScanRead);
+    server.on("/scan_write", handleScanWrite);
 
     server.onNotFound(handleNotFound);
     server.begin();
 
     delay(1000);
     sendUnlock();
-
-    Serial.println("Ninebot ES Controller запущен");
-    Serial.print("AP IP address: ");
-    Serial.println(WiFi.softAPIP());
-    
-    // Проверяем память после инициализации
-    Serial.printf("Свободная RAM: %d байт\n", ESP.getFreeHeap());
 }
 
 void loop() {
