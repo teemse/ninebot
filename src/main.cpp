@@ -219,7 +219,6 @@ uint16_t cpuIdD = 0;
 uint16_t cpuIdE = 0;
 uint16_t cpuIdF = 0;
 
-
 // ============================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================================================
@@ -245,8 +244,6 @@ String getValueType(int value) {
         return "UNKNOWN";
     }
 }
-
-
 
 // ============================================================================
 // ФУНКЦИИ ПРОТОКОЛА
@@ -525,7 +522,6 @@ String getLedModeName(uint8_t mode) {
     }
 }
 
-
 // ============================================================================
 // ПОЛНЫЙ НАБОР ФУНКЦИЙ УПРАВЛЕНИЯ
 // ============================================================================
@@ -539,7 +535,6 @@ void blinkLED(int times) {
         if (i < times - 1) delay(150);
     }
 }
-
 
 void sendHeartbeat() {
     NinebotCommand cmd = createCommand(CMD_HEARTBEAT, INDEX_CRUISE, 0x007C, "Heartbeat");
@@ -636,6 +631,7 @@ void toggleCruiseControl() {
     cruiseControl = !cruiseControl;
     setCruiseControl(cruiseControl);
 }
+
 // Функции для проката
 void findScooter() {
     // Включение мигания фар и звука для поиска
@@ -740,8 +736,6 @@ void setBluetoothBroadcast(bool enabled) {
     setFunBool1Settings(funBool1Settings);
 }
 
-
-
 void handleButton() {
     int reading = digitalRead(BUTTON_PIN);
     if (reading != lastButtonState) {
@@ -816,7 +810,7 @@ void handleData() {
     
     // Основные данные
     doc["speed"] = scooterSpeed;
-    doc["battery"] = scooterBattery;
+    doc["battery"] = batteryTotal;  // Использовать обновляемую переменную
     doc["temperature"] = scooterTemperature;
     doc["mileage"] = totalMileage;
     doc["errorCode"] = scooterErrorCode;
