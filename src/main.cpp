@@ -1024,9 +1024,18 @@ void setup() {
     
     // Инициализация LittleFS
     if (!LittleFS.begin()) {
+        Serial.println("❌ Ошибка инициализации LittleFS");
+        Serial.println("Проверьте загрузку файлов через 'Upload Filesystem Image'");
+        // Можно продолжить работу, но без веб-интерфейса
     } else {
+        Serial.println("✅ LittleFS инициализирована");
+        
         // Выводим список файлов для отладки
         Dir dir = LittleFS.openDir("/");
+        while (dir.next()) {
+            Serial.printf("Файл: %s, Размер: %d байт\n", 
+                         dir.fileName().c_str(), dir.fileSize());
+        }
     }
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
