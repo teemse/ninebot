@@ -25,6 +25,10 @@ bool wifiStationMode = false;  // true = STA, false = AP
 IPAddress localIP;
 bool wifiConnected = false;
 
+// Переменные для управления WiFi
+unsigned long lastWiFiCheck = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 30000; // Проверка каждые 30 секунд
+
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
@@ -275,7 +279,6 @@ void switchToAPMode() {
         WiFi.disconnect();
         delay(100);
         setupWiFiAP();
-        Serial.println("🔄 Переключение на режим точки доступа");
     }
 }
 
@@ -288,7 +291,6 @@ void switchToSTAMode() {
 bool checkWiFiConnection() {
     if (wifiStationMode) {
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("⚠️ Потеря WiFi подключения");
             wifiConnected = false;
             return false;
         }
@@ -530,7 +532,7 @@ String readFirmwareVersion(uint8_t index) {
         uint8_t major = (versionRaw >> 8) & 0x0F;
         uint8_t minor = (versionRaw >> 4) & 0x0F;
         uint8_t patch = versionRaw & 0x0F;
-        return "PCB:" + String(pcbVersion) + " FW:v" + String(major) + "." + String(minor) + "." + String(patch);
+        return String(major) + "." + String(minor) + "." + String(patch);
     }
     return "N/A";
 }
@@ -564,6 +566,7 @@ void updateAllScooterData() {
     battery1Temp = readScooterData(INDEX_BAT1_TEMP);
     battery2Temp = readScooterData(INDEX_BAT2_TEMP);
     mosTemp = readScooterData(INDEX_MOS_TEMP);
+    scooterTemperature = readScooterData(INDEX_MOS_TEMP);
     
     // Электрические параметры
     driveVoltage = readScooterData(INDEX_DRIVE_VOLTAGE) / 100.0;
@@ -1128,30 +1131,22 @@ void setup() {
     
     // Инициализация LittleFS
     if (!LittleFS.begin()) {
-        Serial.println("❌ Ошибка инициализации LittleFS");
-        Serial.println("Проверьте загрузку файлов через 'Upload Filesystem Image'");
         // Можно продолжить работу, но без веб-интерфейса
-    } else {
-        Serial.println("✅ LittleFS инициализирована");
-        
+    } else {        
         // Выводим список файлов для отладки
         Dir dir = LittleFS.openDir("/");
         while (dir.next()) {
-            Serial.printf("Файл: %s, Размер: %d байт\n", 
-                         dir.fileName().c_str(), dir.fileSize());
         }
     }
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     // Инициализация WiFi с автоматическим переключением
-    Serial.println("🚀 Инициализация WiFi...");
     if (strlen(WIFI_SSID_STA) > 0 && strcmp(WIFI_SSID_STA, "YOUR_WIFI_SSID") != 0) {
         // Пробуем подключиться к существующей сети
         setupWiFiSTA();
     } else {
         // Если SSID не указан или это placeholder, используем AP режим
-        Serial.println("ℹ️ STA режим отключен, используется точка доступа");
         setupWiFiAP();
     }
 
@@ -1172,9 +1167,9 @@ void setup() {
         file.close();
     });
 
-    // ============================================================================
-    // ИНФОРМАЦИЯ ДЛЯ OTA (добавьте эти обработчики)
-    // ============================================================================
+
+        // Обработчик для OTA
+
     
     server.on("/firmware_info", HTTP_GET, []() {
         DynamicJsonDocument doc(512);
@@ -1208,7 +1203,6 @@ void setup() {
         server.send(200, "application/json", response);
     });
 
-    // ВСЕ остальные обработчики остаются без изменений
     // Обработчики WiFi
     server.on("/wifi_status", handleWiFiStatus);
     server.on("/wifi_toggle", handleWiFiToggle);
@@ -1250,6 +1244,7 @@ void setup() {
     server.on("/bt_broadcast", handleBTBroadcast);
     server.on("/scan_read", handleScanRead);
     server.on("/scan_write", handleScanWrite);
+
     // НАСТРОЙКА OTA СЕРВЕРА (ВАЖНО!)
     httpUpdater.setup(&server, OTA_PATH, OTA_USERNAME, OTA_PASSWORD);
     server.onNotFound(handleNotFound);
@@ -1263,6 +1258,15 @@ void loop() {
     handleButton();
     server.handleClient();
 
+    // Проверка WiFi подключения каждые 30 секунд
+    if (millis() - lastWiFiCheck >= WIFI_CHECK_INTERVAL) {
+        if (!checkWiFiConnection() && strlen(WIFI_SSID_STA) > 0 && strcmp(WIFI_SSID_STA, "YOUR_WIFI_SSID") != 0) {
+            Serial.println("🔄 Попытка переподключения к WiFi...");
+            setupWiFiSTA();
+        }
+        lastWiFiCheck = millis();
+    }
+    
     if (millis() - lastHeartbeatTime >= HEARTBEAT_INTERVAL) {
         sendHeartbeat();
         lastHeartbeatTime = millis();
