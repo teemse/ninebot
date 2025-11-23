@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
 #include <ArduinoJson.h>
 #include <vector>
 #include <LittleFS.h>
@@ -8,8 +9,24 @@
 // Настройки Wi-Fi
 const char* ssid = "NinebotESx";
 const char* password = "12345678";
+// Настройки OTA
+const char* OTA_USERNAME = "admin";
+const char* OTA_PASSWORD = "NinebotOTA123!"; // Сложный пароль
+const char* OTA_PATH = "/update"; // Стандартный путь
+
+// Настройки для подключения к существующей сети
+// УКАЖИТЕ ВАШИ ДАННЫЕ ЗДЕСЬ:
+const char* WIFI_SSID_STA = "teemse";  // Имя вашей Wi-Fi сети
+const char* WIFI_PASSWORD_STA = "turbina7";  // Пароль вашей Wi-Fi сети
+// Оставьте WIFI_SSID_STA пустым для отключения STA режима
+
+// Режим работы Wi-Fi
+bool wifiStationMode = false;  // true = STA, false = AP
+IPAddress localIP;
+bool wifiConnected = false;
 
 ESP8266WebServer server(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 // ============================================================================
 // СТРУКТУРЫ И КОНСТАНТЫ
@@ -218,6 +235,93 @@ uint16_t cpuIdC = 0;
 uint16_t cpuIdD = 0;
 uint16_t cpuIdE = 0;
 uint16_t cpuIdF = 0;
+
+// ============================================================================
+// ФУНКЦИИ УПРАВЛЕНИЯ WIFI
+// ============================================================================
+
+void setupWiFiAP() {
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(ssid, password);
+    localIP = WiFi.softAPIP();
+    wifiConnected = true;
+    wifiStationMode = false;
+}
+
+void setupWiFiSTA() {
+    if (strlen(WIFI_SSID_STA) == 0) {
+        setupWiFiAP();
+        return;
+    }
+    
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID_STA, WIFI_PASSWORD_STA);
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+        delay(500);
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        localIP = WiFi.localIP();
+        wifiConnected = true;
+        wifiStationMode = true;
+    } else {
+        setupWiFiAP();
+    }
+}
+
+void switchToAPMode() {
+    if (wifiStationMode) {
+        WiFi.disconnect();
+        delay(100);
+        setupWiFiAP();
+        Serial.println("🔄 Переключение на режим точки доступа");
+    }
+}
+
+void switchToSTAMode() {
+    if (!wifiStationMode) {
+        setupWiFiSTA();
+    }
+}
+
+bool checkWiFiConnection() {
+    if (wifiStationMode) {
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("⚠️ Потеря WiFi подключения");
+            wifiConnected = false;
+            return false;
+        }
+        return true;
+    }
+    return wifiConnected; // Для AP режима всегда true
+}
+
+void handleWiFiToggle() {
+    if (wifiStationMode) {
+        switchToAPMode();
+    } else {
+        switchToSTAMode();
+    }
+}
+
+void handleWiFiStatus() {
+    DynamicJsonDocument doc(300);
+    doc["success"] = true;
+    doc["mode"] = wifiStationMode ? "STA (Клиент)" : "AP (Точка доступа)";
+    doc["connected"] = wifiConnected;
+    doc["ip"] = localIP.toString();
+    doc["ssid"] = wifiStationMode ? WIFI_SSID_STA : ssid;
+    
+    if (wifiStationMode && WiFi.status() == WL_CONNECTED) {
+        doc["signalStrength"] = WiFi.RSSI();
+        doc["channel"] = WiFi.channel();
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
+}
 
 // ============================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -1040,8 +1144,16 @@ void setup() {
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(ssid, password);
+    // Инициализация WiFi с автоматическим переключением
+    Serial.println("🚀 Инициализация WiFi...");
+    if (strlen(WIFI_SSID_STA) > 0 && strcmp(WIFI_SSID_STA, "YOUR_WIFI_SSID") != 0) {
+        // Пробуем подключиться к существующей сети
+        setupWiFiSTA();
+    } else {
+        // Если SSID не указан или это placeholder, используем AP режим
+        Serial.println("ℹ️ STA режим отключен, используется точка доступа");
+        setupWiFiAP();
+    }
 
     // ИЗМЕНЕННЫЙ обработчик главной страницы
     server.on("/", []() {
@@ -1060,7 +1172,47 @@ void setup() {
         file.close();
     });
 
+    // ============================================================================
+    // ИНФОРМАЦИЯ ДЛЯ OTA (добавьте эти обработчики)
+    // ============================================================================
+    
+    server.on("/firmware_info", HTTP_GET, []() {
+        DynamicJsonDocument doc(512);
+        doc["success"] = true;
+        doc["version"] = "1.2.0";
+        doc["chip_id"] = String(ESP.getChipId());
+        doc["free_heap"] = ESP.getFreeHeap();
+        doc["sketch_size"] = ESP.getSketchSize();
+        doc["free_sketch_space"] = ESP.getFreeSketchSpace();
+        doc["sdk_version"] = ESP.getSdkVersion();
+        doc["core_version"] = ESP.getCoreVersion();
+        doc["flash_size"] = ESP.getFlashChipSize();
+        doc["cycle_count"] = ESP.getCycleCount();
+        
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
+    });
+
+    // Проверка обновлений (заглушка)
+    server.on("/check_updates", HTTP_GET, []() {
+        DynamicJsonDocument doc(200);
+        doc["success"] = true;
+        doc["update_available"] = false;
+        doc["current_version"] = "1.2.0";
+        doc["latest_version"] = "1.2.0";
+        doc["message"] = "У вас установлена последняя версия";
+        
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
+    });
+
     // ВСЕ остальные обработчики остаются без изменений
+    // Обработчики WiFi
+    server.on("/wifi_status", handleWiFiStatus);
+    server.on("/wifi_toggle", handleWiFiToggle);
+    
     server.on("/unlock", handleUnlock);
     server.on("/lock", handleLock);
     server.on("/toggle", handleToggle);
@@ -1098,7 +1250,8 @@ void setup() {
     server.on("/bt_broadcast", handleBTBroadcast);
     server.on("/scan_read", handleScanRead);
     server.on("/scan_write", handleScanWrite);
-
+    // НАСТРОЙКА OTA СЕРВЕРА (ВАЖНО!)
+    httpUpdater.setup(&server, OTA_PATH, OTA_USERNAME, OTA_PASSWORD);
     server.onNotFound(handleNotFound);
     server.begin();
 
