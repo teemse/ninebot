@@ -635,6 +635,9 @@
               <button class="btn btn-danger" onclick="sendCommand('lock')">
                 <span>🔒</span> Заблокировать
               </button>
+              <button class="btn btn-primary" onclick="sendCommand('open_deck')">
+                <span>🔓</span> Открыть Деку
+              </button>
               <button class="btn btn-warning" onclick="sendCommand('toggle_limit')">
                 <span>📏</span> Лимит скорости
               </button>
@@ -752,6 +755,53 @@
               <button class="btn btn-primary" onclick="startPacketLog()">Начать логирование</button>
               <button class="btn btn-danger" onclick="stopPacketLog()">Остановить</button>
               <button class="btn" onclick="clearPacketLog()" style="background: #636e72; color: white;">Очистить</button>
+            </div>
+            <div id="packetLog" style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.8rem;">
+            </div>
+          </div>
+          <!-- Неизвестные регистры -->
+          <div class="card">
+            <h3>📋 Неизвестные регистры</h3>
+            <div style="margin-top: 15px;">
+              <p><strong>Регистр 0x51, Курок газа:</strong> <span id="UnkReg18">N/A</span></p>
+              <p><strong>Регистр 0x52, Тормоз:</strong> <span id="UnkReg19">N/A</span></p>
+              <p><strong>Регистр 0x2C(Как 56):</strong> <span id="UnkReg8">N/A</span></p>
+              <p><strong>Регистр 0x4C(не записывается):</strong> <span id="UnkReg15">N/A</span></p>
+              <p><strong>Регистр 0x54(Как 56):</strong> <span id="UnkReg20">N/A</span></p>
+              <p><strong>Регистр 0x56(Записывается1-5):</strong> <span id="UnkReg21">N/A</span></p>
+              <p><strong>Регистр 0x57не записывается:</strong> <span id="UnkReg22">N/A</span></p>
+              <p><strong>Регистр 0x66(не записывается):</strong> <span id="UnkReg26">N/A</span></p>
+              <p><strong>Регистр 0x7F(не трогать, ошибка 32):</strong> <span id="UnkReg28">N/A</span></p>
+              <p><strong>Регистр 0x80(Фара:0 - Выкл,1 - Вкл, 2 - Строб, дисплей выкл):</strong> <span id="UnkReg30">N/A</span></p>
+              <p><strong>Регистр 0x0:</strong> <span id="UnkReg1">N/A</span></p>
+              <p><strong>Регистр 0x1:</strong> <span id="UnkReg2">N/A</span></p>
+              <p><strong>Регистр 0xD:</strong> <span id="UnkReg3">N/A</span></p>
+              <p><strong>Регистр 0xE:</strong> <span id="UnkReg4">N/A</span></p>
+              <p><strong>Регистр 0xF:</strong> <span id="UnkReg5">N/A</span></p>
+              <p><strong>Регистр 0x23:</strong> <span id="UnkReg6">N/A</span></p>
+              <p><strong>Регистр 0x27:</strong> <span id="UnkReg7">N/A</span></p>
+              <p><strong>Регистр 0x2D:</strong> <span id="UnkReg9">N/A</span></p>
+              <p><strong>Регистр 0x2E:</strong> <span id="UnkReg10">N/A</span></p>
+              <p><strong>Регистр 0x48:</strong> <span id="UnkReg11">N/A</span></p>
+              <p><strong>Регистр 0x49:</strong> <span id="UnkReg12">N/A</span></p>
+              <p><strong>Регистр 0x4A:</strong> <span id="UnkReg13">N/A</span></p>
+              <p><strong>Регистр 0x4B:</strong> <span id="UnkReg14">N/A</span></p>
+              <p><strong>Регистр 0x4D:</strong> <span id="UnkReg16">N/A</span></p>
+              <p><strong>Регистр 0x4E:</strong> <span id="UnkReg17">N/A</span></p>
+              <p><strong>Регистр 0x60:</strong> <span id="UnkReg23">N/A</span></p>
+              <p><strong>Регистр 0x61:</strong> <span id="UnkReg24">N/A</span></p>
+              <p><strong>Регистр 0x64:</strong> <span id="UnkReg25">N/A</span></p>
+              <p><strong>Регистр 0x67:</strong> <span id="UnkReg27">N/A</span></p>
+              <p><strong>Регистр 0x7F:</strong> <span id="UnkReg29">N/A</span></p>
+              <p><strong>Регистр 0x84:</strong> <span id="UnkReg31">N/A</span></p>
+              <p><strong>Регистр 0x8C:</strong> <span id="UnkReg32">N/A</span></p>
+              <p><strong>Регистр 0x8D:</strong> <span id="UnkReg33">N/A</span></p>
+              <p><strong>Регистр 0x8F:</strong> <span id="UnkReg34">N/A</span></p>
+              <p><strong>Регистр 0x9B:</strong> <span id="UnkReg35">N/A</span></p>
+              <p><strong>Регистр 0x9F:</strong> <span id="UnkReg36">N/A</span></p>
+              <p><strong>Регистр 0xC4:</strong> <span id="UnkReg37">N/A</span></p>
+              <p><strong>Регистр 0xC5:</strong> <span id="UnkReg38">N/A</span></p>
+              <p><strong>Регистр 0xCF:</strong> <span id="UnkReg39">N/A</span></p>
             </div>
             <div id="packetLog" style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.8rem;">
             </div>
@@ -1785,36 +1835,6 @@ function switchTab(tabName) {
         }, 1000);
     }
 
-    // Вспомогательные функции
-    function updateScanProgress(current, total) {
-        const progress = (current / total) * 100;
-        document.getElementById('scanProgress').style.width = `${progress}%`;
-        document.getElementById('scanProgressText').textContent = `${current}/${total}`;
-    }
-
-    function addScanResult(message, type = '') {
-        const results = document.getElementById('scanResults');
-        const item = document.createElement('div');
-        item.className = `scan-result-item ${type}`;
-        item.textContent = message;
-        results.appendChild(item);
-        results.scrollTop = results.scrollHeight;
-    }
-
-    function addFoundRegister(index, value, type) {
-        const foundElement = document.getElementById('foundRegisters');
-        const registerInfo = document.createElement('div');
-        registerInfo.style.padding = '8px';
-        registerInfo.style.borderBottom = '1px solid #eee';
-        registerInfo.style.fontFamily = 'monospace';
-        
-        const typeIcon = type === 'read' ? '📖' : '✏️';
-        registerInfo.innerHTML = `${typeIcon} <strong>0x${index.toString(16).toUpperCase()}</strong>: ${value} <span style="color: #666;">(${type})</span>`;
-        
-        foundElement.appendChild(registerInfo);
-    }
-
-
     // Переключение вкладок
     function switchTab(tabName) {
       // Скрыть все вкладки
@@ -1930,6 +1950,50 @@ function switchTab(tabName) {
       document.getElementById('lockStatus').textContent = data.isLocked ? 'Заблокирован' : 'Разблокирован';
       document.getElementById('engineStatus').textContent = data.engineState ? 'ВКЛ' : 'ВЫКЛ';
       document.getElementById('currentLedMode').textContent = getLedModeName(data.ledMode || 1);
+      
+      // Неизвестные регистры
+      document.getElementById('UnkReg1').textContent = data.UnkReg1 || 'N/A';
+      document.getElementById('UnkReg2').textContent = data.UnkReg2 || 'N/A';
+      document.getElementById('UnkReg3').textContent = data.UnkReg3 || 'N/A';
+      document.getElementById('UnkReg4').textContent = data.UnkReg4 || 'N/A';
+      document.getElementById('UnkReg5').textContent = data.UnkReg5 || 'N/A';
+      document.getElementById('UnkReg6').textContent = data.UnkReg6 || 'N/A';
+      document.getElementById('UnkReg7').textContent = data.UnkReg7 || 'N/A';
+      document.getElementById('UnkReg8').textContent = data.UnkReg8 || 'N/A';
+      document.getElementById('UnkReg9').textContent = data.UnkReg9 || 'N/A';
+      document.getElementById('UnkReg10').textContent = data.UnkReg10 || 'N/A';
+      document.getElementById('UnkReg11').textContent = data.UnkReg11 || 'N/A';
+      document.getElementById('UnkReg12').textContent = data.UnkReg12 || 'N/A';
+      document.getElementById('UnkReg13').textContent = data.UnkReg13 || 'N/A';
+      document.getElementById('UnkReg14').textContent = data.UnkReg14 || 'N/A';
+      document.getElementById('UnkReg15').textContent = data.UnkReg15 || 'N/A';
+      document.getElementById('UnkReg16').textContent = data.UnkReg16 || 'N/A';
+      document.getElementById('UnkReg17').textContent = data.UnkReg17 || 'N/A';
+      document.getElementById('UnkReg18').textContent = data.UnkReg18 || 'N/A';
+      document.getElementById('UnkReg19').textContent = data.UnkReg19 || 'N/A';
+      document.getElementById('UnkReg20').textContent = data.UnkReg20 || 'N/A';
+      document.getElementById('UnkReg21').textContent = data.UnkReg21 || 'N/A';
+      document.getElementById('UnkReg22').textContent = data.UnkReg22 || 'N/A';
+      document.getElementById('UnkReg23').textContent = data.UnkReg23 || 'N/A';
+      document.getElementById('UnkReg24').textContent = data.UnkReg24 || 'N/A';
+      document.getElementById('UnkReg25').textContent = data.UnkReg25 || 'N/A';
+      document.getElementById('UnkReg26').textContent = data.UnkReg26 || 'N/A';
+      document.getElementById('UnkReg27').textContent = data.UnkReg27 || 'N/A';
+      document.getElementById('UnkReg28').textContent = data.UnkReg28 || 'N/A';
+      document.getElementById('UnkReg29').textContent = data.UnkReg29 || 'N/A';
+      document.getElementById('UnkReg30').textContent = data.UnkReg30 || 'N/A';
+      document.getElementById('UnkReg31').textContent = data.UnkReg31 || 'N/A';
+      document.getElementById('UnkReg32').textContent = data.UnkReg32 || 'N/A';
+      document.getElementById('UnkReg33').textContent = data.UnkReg33 || 'N/A';
+      document.getElementById('UnkReg34').textContent = data.UnkReg34 || 'N/A';
+      document.getElementById('UnkReg35').textContent = data.UnkReg35 || 'N/A';
+      document.getElementById('UnkReg36').textContent = data.UnkReg36 || 'N/A';
+      document.getElementById('UnkReg37').textContent = data.UnkReg37 || 'N/A';
+      document.getElementById('UnkReg38').textContent = data.UnkReg38 || 'N/A';
+      document.getElementById('UnkReg39').textContent = data.UnkReg39 || 'N/A';
+      
+
+
       
       // Обновляем переключатели настроек
       updateSettingsSwitches(data);
