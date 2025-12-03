@@ -4,17 +4,30 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <ArduinoJson.h>
 #include <vector>
-#include "config.h"
 #include <LittleFS.h>
 
+// Настройки Wi-Fi
+const char* ssid = "NinebotESx";
+const char* password = "12345678";
+// Настройки OTA
+const char* OTA_USERNAME = "admin";
+const char* OTA_PASSWORD = "NinebotOTA123!"; // Сложный пароль
+const char* OTA_PATH = "/update"; // Стандартный путь
 
+// Настройки для подключения к существующей сети
+// УКАЖИТЕ ВАШИ ДАННЫЕ ЗДЕСЬ:
+const char* WIFI_SSID_STA = "teemse";  // Имя вашей Wi-Fi сети
+const char* WIFI_PASSWORD_STA = "turbina7";  // Пароль вашей Wi-Fi сети
+// Оставьте WIFI_SSID_STA пустым для отключения STA режима
 
 // Режим работы Wi-Fi
+bool wifiStationMode = false;  // true = STA, false = AP
 IPAddress localIP;
 bool wifiConnected = false;
 
 // Переменные для управления WiFi
 unsigned long lastWiFiCheck = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 30000; // Проверка каждые 30 секунд
 
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -298,11 +311,14 @@ struct NinebotCommand {
 // ПЕРЕМЕННЫЕ
 // ============================================================================
 
+const int BUTTON_PIN = 5;
 bool isLocked = true;
 bool lastButtonState = HIGH;
 unsigned long lastDebounceTime = 0;
-unsigned long lastHeartbeatTime = 0;
+const unsigned long debounceDelay = 50;
 
+unsigned long lastHeartbeatTime = 0;
+const unsigned long HEARTBEAT_INTERVAL = 4000;
 
 // Данные самоката
 // Основные данные
