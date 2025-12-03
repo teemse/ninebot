@@ -1,0 +1,1022 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ninebot ES Controller</title>
+  <style>
+    :root {
+      /* Цветовая палитра */
+      --primary: #0066cc;
+      --primary-dark: #0052a3;
+      --secondary: #00c853;
+      --danger: #ff3b30;
+      --warning: #ff9500;
+      --info: #5856d6;
+      --light: #f8f9fa;
+      --dark: #1a1a1a;
+      --gray: #8e8e93;
+      --border: #e0e0e0;
+      --card-bg: #ffffff;
+      --body-bg: #f5f5f7;
+      
+      /* Тени */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
+      
+      /* Скругления */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      
+      /* Отступы */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--body-bg);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: var(--space-md) var(--space-lg);
+      box-shadow: var(--shadow-md);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .app-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .app-logo h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--secondary);
+    }
+
+    .status-dot.locked {
+      background-color: var(--danger);
+    }
+
+    /* Main Layout */
+    .main-content {
+      flex: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--space-lg);
+    }
+
+    /* Tabs */
+    .tabs-container {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tabs-header {
+      display: flex;
+      overflow-x: auto;
+      background: var(--light);
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+    }
+
+    .tabs-header::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      padding: var(--space-md) var(--space-lg);
+      border: none;
+      background: none;
+      color: var(--gray);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .tab-btn:hover {
+      color: var(--primary);
+      background: rgba(0, 102, 204, 0.05);
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      background: var(--card-bg);
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background-color: var(--primary);
+    }
+
+    .tab-content {
+      padding: var(--space-lg);
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-lg);
+      margin-bottom: var(--space-lg);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-md);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    /* Status Card */
+    .status-card {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .status-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .status-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .status-icon {
+      font-size: 3rem;
+      margin-bottom: var(--space-md);
+    }
+
+    .status-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+    }
+
+    .status-subtext {
+      opacity: 0.9;
+      font-size: 0.95rem;
+      margin-bottom: var(--space-lg);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-md);
+      margin-top: var(--space-lg);
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: var(--space-md);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: var(--space-xs);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    /* Control Grid */
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: var(--space-sm);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: var(--space-md) var(--space-lg);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      text-align: center;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .btn-success {
+      background-color: var(--secondary);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #00b247;
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #e0352b;
+    }
+
+    .btn-warning {
+      background-color: var(--warning);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background-color: #e68500;
+    }
+
+    .btn-info {
+      background-color: var(--info);
+      color: white;
+    }
+
+    .btn-info:hover {
+      background-color: #4a4ac4;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--dark);
+    }
+
+    .btn-outline:hover {
+      background: var(--light);
+    }
+
+    .btn-toggle {
+      background: var(--light);
+      border: 2px solid var(--border);
+      color: var(--dark);
+    }
+
+    .btn-toggle.active {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: var(--space-lg);
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: var(--space-md);
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    /* Settings */
+    .settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-md);
+      background: var(--light);
+      border-radius: var(--radius-md);
+    }
+
+    .setting-label {
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    /* Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 28px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--gray);
+      transition: .3s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* Data Display */
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-md);
+    }
+
+    .data-item {
+      background: var(--light);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .data-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .data-label {
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+
+    /* Scan Results */
+    .scan-results {
+      background: var(--light);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .scan-result-item {
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.9rem;
+    }
+
+    .scan-result-item.found {
+      background: rgba(0, 200, 83, 0.1);
+      border-left: 4px solid var(--secondary);
+    }
+
+    .scan-result-item.error {
+      background: rgba(255, 59, 48, 0.1);
+      border-left: 4px solid var(--danger);
+    }
+
+    /* Progress */
+    .progress {
+      width: 100%;
+      height: 8px;
+      background: var(--light);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: var(--space-md) 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      transition: width 0.3s ease;
+    }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: var(--space-md) var(--space-lg);
+      background: var(--dark);
+      color: white;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      max-width: 400px;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background-color: var(--secondary);
+    }
+
+    .notification.error {
+      background-color: var(--danger);
+    }
+
+    .notification.warning {
+      background-color: var(--warning);
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: var(--space-md);
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-xs);
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--space-md);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .main-content {
+        padding: var(--space-md);
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .control-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      }
+
+      .tabs-header {
+        padding: 0 var(--space-sm);
+      }
+
+      .tab-btn {
+        padding: var(--space-md) var(--space-sm);
+        font-size: 0.9rem;
+      }
+
+      .header-content {
+        flex-direction: column;
+        gap: var(--space-sm);
+        align-items: flex-start;
+      }
+
+      .header-status {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .btn {
+        padding: var(--space-sm) var(--space-md);
+        font-size: 0.9rem;
+      }
+
+      .card {
+        padding: var(--space-md);
+      }
+
+      .tab-content {
+        padding: var(--space-md);
+      }
+    }
+
+    /* Utility Classes */
+    .hidden {
+      display: none;
+    }
+
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .text-muted {
+      color: var(--gray);
+    }
+
+    .mb-2 { margin-bottom: var(--space-sm); }
+    .mb-3 { margin-bottom: var(--space-md); }
+    .mb-4 { margin-bottom: var(--space-lg); }
+    .mt-2 { margin-top: var(--space-sm); }
+    .mt-3 { margin-top: var(--space-md); }
+    .mt-4 { margin-top: var(--space-lg); }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="header-left">
+          <div class="app-logo">
+            <h1>🚀 Ninebot ES Controller</h1>
+          </div>
+          <div class="header-status">
+            <div class="status-indicator">
+              <span class="status-dot" id="globalStatusDot"></span>
+              <span id="globalStatusText">Подключение...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Tabs -->
+      <div class="tabs-container">
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="main">Основное</button>
+          <button class="tab-btn" data-tab="extended">Информация</button>
+          <button class="tab-btn" data-tab="stats">Статистика</button>
+          <button class="tab-btn" data-tab="lights">Подсветка</button>
+          <button class="tab-btn" data-tab="settings">Настройки</button>
+          <button class="tab-btn" data-tab="system">Система</button>
+          <button class="tab-btn" data-tab="research">Исследование</button>
+          <button class="tab-btn" data-tab="ota">Обновление</button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content" id="main-tab">
+          <div class="dashboard-grid">
+            <!-- Status Card -->
+            <div class="card status-card">
+              <div class="status-content">
+                <div class="status-icon" id="statusIcon">🔒</div>
+                <div class="status-text" id="statusText">ЗАБЛОКИРОВАН</div>
+                <div class="status-subtext" id="statusSubtext">Самокат заблокирован</div>
+                
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <div class="stat-value" id="batteryValue">0%</div>
+                    <div class="stat-label">Батарея</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value" id="speedValue">0</div>
+                    <div class="stat-label">км/ч</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value" id="tempValue">0°</div>
+                    <div class="stat-label">Температура</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value" id="mileageValue">0</div>
+                    <div class="stat-label">Пробег</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Controls -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">⚡ Быстрое управление</h3>
+              </div>
+              <div class="control-grid">
+                <button class="btn btn-success" onclick="sendCommand('unlock')">
+                  <span>🔓</span> Разблокировать
+                </button>
+                <button class="btn btn-danger" onclick="sendCommand('lock')">
+                  <span>🔒</span> Заблокировать
+                </button>
+                <button class="btn btn-primary" onclick="sendCommand('open_deck')">
+                  <span>🔓</span> Открыть деку
+                </button>
+                <button class="btn btn-warning" onclick="sendCommand('toggle_limit')">
+                  <span>📏</span> Лимит скорости
+                </button>
+                <button class="btn btn-primary" onclick="toggleDataRefresh()" id="refreshBtn">
+                  <span>🔄</span> Автообновление
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sections -->
+          <div class="section">
+            <h3 class="section-title">🎛️ Режимы работы</h3>
+            <div class="control-grid">
+              <button class="btn btn-outline" onclick="sendCommand('mode_normal')">
+                <span>🚶</span> NORMAL
+              </button>
+              <button class="btn btn-outline" onclick="sendCommand('mode_eco')">
+                <span>🌿</span> ECO
+              </button>
+              <button class="btn btn-outline" onclick="sendCommand('mode_sport')">
+                <span>🏎️</span> SPORT
+              </button>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 class="section-title">📏 Ограничение скорости</h3>
+            <div class="control-grid">
+              <button class="btn btn-outline" onclick="setSpeedLimit(150)">15 км/ч</button>
+              <button class="btn btn-outline" onclick="setSpeedLimit(200)">20 км/ч</button>
+              <button class="btn btn-outline" onclick="setSpeedLimit(250)">25 км/ч</button>
+              <button class="btn btn-outline" onclick="setSpeedLimit(300)">30 км/ч</button>
+              <button class="btn btn-outline" onclick="setSpeedLimit(350)">35 км/ч</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 class="section-title">🔧 Дополнительные функции</h3>
+            <div class="control-grid">
+              <button class="btn btn-toggle" onclick="sendCommand('headlight_toggle')" id="headlightBtn">
+                <span>💡</span> Фары ВЫКЛ
+              </button>
+              <button class="btn btn-toggle" onclick="sendCommand('beep_toggle')" id="beepBtn">
+                <span>🔊</span> Звук ВЫКЛ
+              </button>
+              <button class="btn btn-toggle" onclick="sendCommand('cruise_toggle')" id="cruiseBtn">
+                <span>⏱️</span> Круиз ВЫКЛ
+              </button>
+              <button class="btn btn-toggle" onclick="sendCommand('engine_on')" id="engineBtn">
+                <span>⚡</span> Двигатель ВЫКЛ
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Other tabs content remains similar but updated with new classes -->
+        <!-- Extended Info Tab -->
+        <div class="tab-content hidden" id="extended-tab">
+          <div class="dashboard-grid">
+            <!-- System Info Card -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">🔧 Системная информация</h3>
+              </div>
+              <div class="data-grid">
+                <div class="data-item">
+                  <div class="data-value" id="driveVoltageValue">0.0</div>
+                  <div class="data-label">Напряжение (В)</div>
+                </div>
+                <div class="data-item">
+                  <div class="data-value" id="motorCurrentValue">0.0</div>
+                  <div class="data-label">Ток (А)</div>
+                </div>
+                <div class="data-item">
+                  <div class="data-value" id="powerValue">0</div>
+                  <div class="data-label">Мощность (Вт)</div>
+                </div>
+                <div class="data-item">
+                  <div class="data-value" id="avgSpeedValue">0</div>
+                  <div class="data-label">Ср. скорость</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Temperatures Card -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">🌡️ Температуры</h3>
+              </div>
+              <div class="data-grid">
+                <div class="data-item">
+                  <div class="data-value" id="bodyTempValue">0°</div>
+                  <div class="data-label">Корпус</div>
+                </div>
+                <div class="data-item">
+                  <div class="data-value" id="bat1TempValue">0°</div>
+                  <div class="data-label">Батарея 1</div>
+                </div>
+                <div class="data-item">
+                  <div class="data-value" id="bat2TempValue">0°</div>
+                  <div class="data-label">Батарея 2</div>
+                </div>
+                <div class="data-item">
+                  <div class="data-value" id="mosTempValue">0°</div>
+                  <div class="data-label">MOS</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class="tab-content hidden" id="stats-tab">
+          <!-- Similar structure for stats -->
+        </div>
+
+        <!-- Lights Tab -->
+        <div class="tab-content hidden" id="lights-tab">
+          <!-- Similar structure for lights -->
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content hidden" id="settings-tab">
+          <!-- Similar structure for settings -->
+        </div>
+
+        <!-- System Tab -->
+        <div class="tab-content hidden" id="system-tab">
+          <!-- Similar structure for system -->
+        </div>
+
+        <!-- Research Tab -->
+        <div class="tab-content hidden" id="research-tab">
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">🔍 Сканирование регистров</h3>
+              </div>
+              <div class="mb-3">
+                <p class="text-muted">Обнаружение новых команд и регистров самоката</p>
+              </div>
+              
+              <div class="control-grid mb-3">
+                <button class="btn btn-success" onclick="startSafeScan()">
+                  🔒 Безопасное сканирование
+                </button>
+                <button class="btn btn-warning" onclick="startBruteForceScan()">
+                  ⚠️ Брутфорс сканирование
+                </button>
+                <button class="btn btn-danger" onclick="startDeepScan()">
+                  🚨 Глубокое сканирование
+                </button>
+              </div>
+
+              <div class="progress">
+                <div class="progress-bar" id="scanProgress" style="width: 0%"></div>
+              </div>
+
+              <div class="text-center mb-3">
+                <span id="scanStatus">Готов к сканированию</span>
+                <span id="scanProgressText">0/256</span>
+              </div>
+
+              <div class="mb-3">
+                <div class="form-group">
+                  <label class="form-label">Индекс (hex):</label>
+                  <input type="text" class="form-input" id="manualIndex" placeholder="0x70">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Значение (hex):</label>
+                  <input type="text" class="form-input" id="manualValue" placeholder="0x0001">
+                </div>
+                <button class="btn btn-primary" onclick="manualTest()">Тестировать</button>
+              </div>
+
+              <div class="scan-results" id="scanResults">
+                <!-- Results will appear here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OTA Tab -->
+        <div class="tab-content hidden" id="ota-tab">
+          <!-- Similar structure for OTA -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script>
+    // All your existing JavaScript functions remain exactly the same
+    // Only tab switching logic is updated:
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const tabId = this.dataset.tab;
+          
+          // Update active tab button
+          document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+          
+          // Show selected tab content
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+          });
+          document.getElementById(tabId + '-tab').classList.remove('hidden');
+          
+          // Load data for specific tabs if needed
+          if (tabId === 'ota') {
+            loadSystemInfo();
+          }
+        });
+      });
+
+      // Load initial data
+      loadStatus();
+      startAutoRefresh();
+      updateLedModeButtons();
+      
+      // Initialize global status
+      updateGlobalStatus();
+    });
+
+    // All your existing functions (loadStatus, sendCommand, etc.) remain unchanged
+    // Just copy them from your original code
+    let autoRefreshInterval = null;
+    let currentStatus = true;
+    let currentLedMode = 1;
+    let scanInProgress = false;
+    let packetLogging = false;
+    let packetLog = [];
+    let otaInProgress = false;
+
+    function updateGlobalStatus() {
+      const dot = document.getElementById('globalStatusDot');
+      const text = document.getElementById('globalStatusText');
+      
+      if (currentStatus) {
+        dot.className = 'status-dot locked';
+        text.textContent = 'Заблокирован';
+      } else {
+        dot.className = 'status-dot';
+        text.textContent = 'Разблокирован';
+      }
+    }
+
+    // Copy all your existing JavaScript functions here...
+    // They remain exactly the same as in your original code
+
+  </script>
+</body>
+</html>
