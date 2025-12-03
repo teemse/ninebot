@@ -1,0 +1,1396 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Ninebot ES Controller</title>
+  <style>
+    :root {
+      --primary: #2d3436;
+      --secondary: #636e72;
+      --accent: #0984e3;
+      --success: #00b894;
+      --danger: #d63031;
+      --warning: #fdcb6e;
+      --info: #6c5ce7;
+      --light: #f8f9fa;
+      --dark: #2d3436;
+      --gray: #dfe6e9;
+      --card-bg: #ffffff;
+      --body-bg: #f5f6fa;
+      --border-radius: 16px;
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-hover: 0 8px 24px rgba(0,0,0,0.12);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--body-bg);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      padding: 0;
+      touch-action: manipulation;
+      overscroll-behavior: none;
+    }
+
+    /* Мобильный header */
+    .mobile-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--primary);
+      color: white;
+      padding: calc(12px + var(--safe-top)) 16px 12px;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .menu-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .mobile-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .mobile-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Боковая панель для мобильных */
+    .sidebar {
+      width: 280px;
+      background: var(--primary);
+      color: white;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      height: 100dvh;
+      box-shadow: 5px 0 20px rgba(0,0,0,0.1);
+      z-index: 1001;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      padding-top: max(30px, var(--safe-top));
+      padding-bottom: max(20px, var(--safe-bottom));
+    }
+
+    .sidebar.mobile-hidden {
+      transform: translateX(-100%);
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: none;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+
+    /* Основное содержимое */
+    .main-content {
+      flex: 1;
+      padding: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-top: calc(60px + var(--safe-top));
+      padding-bottom: calc(80px + var(--safe-bottom));
+      padding-left: 16px;
+      padding-right: 16px;
+      width: 100%;
+    }
+
+    /* Мобильная навигация (нижняя панель) */
+    .mobile-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border-top: 1px solid var(--gray);
+      display: none;
+      justify-content: space-around;
+      padding: 8px 4px calc(8px + var(--safe-bottom));
+      z-index: 999;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 4px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--secondary);
+      font-size: 0.7rem;
+      transition: var(--transition);
+      min-height: 56px;
+    }
+
+    .mobile-nav-item.active {
+      color: var(--accent);
+      background: rgba(9, 132, 227, 0.1);
+    }
+
+    .mobile-nav-icon {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    /* Улучшенные карточки для мобильных */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      border: 1px solid transparent;
+    }
+
+    .card:active {
+      transform: scale(0.98);
+    }
+
+    .card.interactive {
+      cursor: pointer;
+    }
+
+    /* Кнопки оптимизированные для сенсора */
+    .btn {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      min-height: 48px;
+      touch-action: manipulation;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%);
+      transform-origin: 50% 50%;
+    }
+
+    .btn:focus:not(:active)::after {
+      animation: ripple 1s ease-out;
+    }
+
+    @keyframes ripple {
+      0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+      }
+      20% {
+        transform: scale(25, 25);
+        opacity: 0.3;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(40, 40);
+      }
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    /* Свайп-панель для быстрого управления */
+    .swipe-control {
+      background: linear-gradient(135deg, var(--accent), var(--info));
+      color: white;
+      padding: 20px;
+      border-radius: var(--border-radius);
+      margin: 16px 0;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .swipe-track {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .swipe-handle {
+      background: rgba(255,255,255,0.9);
+      height: 60px;
+      width: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .swipe-handle:active {
+      cursor: grabbing;
+      transform: scale(0.95);
+    }
+
+    /* Адаптивная сетка */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    /* Улучшенные индикаторы */
+    .value-display {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+      text-align: center;
+    }
+
+    .value-unit {
+      font-size: 1rem;
+      color: var(--secondary);
+      font-weight: 500;
+    }
+
+    /* Ползунки для мобильных */
+    .slider-container {
+      padding: 20px 0;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--gray);
+      outline: none;
+      margin: 15px 0;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .slider::-moz-range-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    /* Жесты */
+    .gesture-hint {
+      text-align: center;
+      padding: 20px;
+      color: var(--secondary);
+      font-size: 0.9rem;
+    }
+
+    .gesture-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    /* Всплывающие меню */
+    .action-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      padding-bottom: calc(20px + var(--safe-bottom));
+      z-index: 1002;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    }
+
+    .action-sheet.active {
+      transform: translateY(0);
+    }
+
+    .action-sheet-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .action-sheet-item {
+      padding: 16px;
+      border-bottom: 1px solid var(--gray);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .action-sheet-item:active {
+      background: var(--gray);
+    }
+
+    .action-sheet-cancel {
+      margin-top: 12px;
+      padding: 16px;
+      text-align: center;
+      color: var(--danger);
+      font-weight: 600;
+      border-radius: 12px;
+      background: rgba(214, 48, 49, 0.1);
+      cursor: pointer;
+    }
+
+    /* Уведомления для мобильных */
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 16px;
+      right: 16px;
+      background: var(--card-bg);
+      color: var(--dark);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      transform: translateY(-100px);
+      transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index: 1003;
+      border-left: 4px solid var(--success);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .notification.error {
+      border-left-color: var(--danger);
+    }
+
+    .notification.warning {
+      border-left-color: var(--warning);
+    }
+
+    .notification.info {
+      border-left-color: var(--accent);
+    }
+
+    .notification.show {
+      transform: translateY(calc(20px + var(--safe-top)));
+    }
+
+    .notification-icon {
+      font-size: 20px;
+    }
+
+    /* Вибрация (где поддерживается) */
+    @media (hover: none) and (pointer: coarse) {
+      .btn:active {
+        transform: scale(0.95);
+      }
+    }
+
+    /* Адаптивные медиа-запросы */
+    @media (max-width: 768px) {
+      .mobile-header {
+        display: flex;
+      }
+      
+      .mobile-nav {
+        display: flex;
+      }
+      
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      
+      .sidebar.mobile-visible {
+        transform: translateX(0);
+      }
+      
+      .main-content {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: calc(60px + var(--safe-top));
+        padding-bottom: calc(80px + var(--safe-bottom));
+      }
+      
+      .value-display {
+        font-size: 2rem;
+      }
+      
+      .card {
+        padding: 16px;
+        margin-bottom: 12px;
+      }
+      
+      .btn {
+        padding: 16px;
+        font-size: 0.95rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      
+      .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .mobile-nav-item {
+        min-height: 52px;
+        padding: 6px 2px;
+        font-size: 0.65rem;
+      }
+      
+      .mobile-nav-icon {
+        font-size: 18px;
+      }
+      
+      .swipe-control {
+        padding: 16px;
+      }
+      
+      .swipe-handle {
+        width: 50px;
+        height: 50px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      
+      .value-display {
+        font-size: 1.8rem;
+      }
+      
+      .mobile-nav-item span {
+        font-size: 0.6rem;
+      }
+    }
+
+    /* Поддержка ориентации */
+    @media (orientation: landscape) and (max-height: 600px) {
+      .mobile-header {
+        display: none;
+      }
+      
+      .mobile-nav {
+        display: none;
+      }
+      
+      .main-content {
+        padding-top: 20px;
+        padding-bottom: 20px;
+      }
+    }
+
+    /* Темная тема для мобильных */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #ffffff;
+        --secondary: #b2bec3;
+        --accent: #74b9ff;
+        --success: #00cec9;
+        --danger: #ff7675;
+        --warning: #fdcb6e;
+        --info: #a29bfe;
+        --light: #2d3436;
+        --dark: #ffffff;
+        --gray: #4a4a4a;
+        --card-bg: #2d3436;
+        --body-bg: #1a1a1a;
+        --shadow: 0 4px 12px rgba(0,0,0,0.3);
+        --shadow-hover: 0 8px 24px rgba(0,0,0,0.4);
+      }
+      
+      .mobile-nav {
+        background: #2d3436;
+        border-top: 1px solid #4a4a4a;
+      }
+      
+      .action-sheet {
+        background: #2d3436;
+      }
+    }
+
+    /* Анимации для мобильных */
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-slide {
+      animation: slideUp 0.4s ease-out;
+    }
+
+    /* Предотвращение zoom при фокусе на iOS */
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+
+    /* Улучшенный скролл для мобильных */
+    .scrollable {
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+
+    /* Хак для фиксированных элементов на iOS */
+    @supports (-webkit-touch-callout: none) {
+      .main-content {
+        min-height: -webkit-fill-available;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Мобильный хедер -->
+  <div class="mobile-header">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <div class="mobile-title" id="mobileTitle">Панель управления</div>
+    <div class="mobile-actions">
+      <button class="btn btn-success" style="padding: 8px; min-height: auto;" onclick="sendCommand('unlock')">🔓</button>
+      <button class="btn btn-danger" style="padding: 8px; min-height: auto;" onclick="sendCommand('lock')">🔒</button>
+    </div>
+  </div>
+
+  <!-- Оверлей для боковой панели -->
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- Боковая панель -->
+  <div class="sidebar mobile-hidden">
+    <div class="logo" style="margin-bottom: 30px;">
+      <div class="logo-icon">🛴</div>
+      <div class="logo-text">
+        <h1>Ninebot ES</h1>
+        <p>Мобильный контроллер</p>
+      </div>
+    </div>
+
+    <nav class="nav-menu scrollable" style="flex: 1; overflow-y: auto;">
+      <a class="nav-item active" onclick="switchTab('dashboard')">
+        <span class="icon">📊</span>
+        <span>Панель управления</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('extended')">
+        <span class="icon">🔍</span>
+        <span>Детали</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('lights')">
+        <span class="icon">🌈</span>
+        <span>Подсветка</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('stats')">
+        <span class="icon">📈</span>
+        <span>Статистика</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('settings')">
+        <span class="icon">⚙️</span>
+        <span>Настройки</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('research')">
+        <span class="icon">🔬</span>
+        <span>Исследование</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('system')">
+        <span class="icon">💻</span>
+        <span>Система</span>
+      </a>
+      <a class="nav-item" onclick="switchTab('ota')">
+        <span class="icon">🔄</span>
+        <span>Обновление</span>
+      </a>
+    </nav>
+
+    <div class="status-bar">
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <div>Подключено</div>
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.8; text-align: center; margin-top: 10px;">
+        <div>Батарея: <span id="sidebarBattery">0%</span></div>
+        <div>Версия: 2.1.0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Основное содержимое -->
+  <div class="main-content scrollable">
+    <!-- Панель управления -->
+    <div id="dashboard-tab" class="tab-content active">
+      <!-- Быстрый статус -->
+      <div class="card animate-slide">
+        <div class="grid-3">
+          <div style="text-align: center;">
+            <div class="value-display" id="batteryValue">0<span class="value-unit">%</span></div>
+            <div style="font-size: 0.85rem; color: var(--secondary); margin-top: 4px;">Батарея</div>
+          </div>
+          <div style="text-align: center;">
+            <div class="value-display" id="speedValue">0<span class="value-unit">км/ч</span></div>
+            <div style="font-size: 0.85rem; color: var(--secondary); margin-top: 4px;">Скорость</div>
+          </div>
+          <div style="text-align: center;">
+            <div class="value-display" id="tempValue">0<span class="value-unit">°C</span></div>
+            <div style="font-size: 0.85rem; color: var(--secondary); margin-top: 4px;">Температура</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Статус блокировки -->
+      <div class="card interactive animate-slide" onclick="toggleLock()">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 28px;" id="lockIcon">🔒</div>
+            <div>
+              <div style="font-weight: 600; font-size: 1.1rem;" id="lockStatusText">Заблокирован</div>
+              <div style="font-size: 0.85rem; color: var(--secondary);">Нажмите для смены статуса</div>
+            </div>
+          </div>
+          <div style="padding: 8px 16px; background: var(--danger); color: white; border-radius: 20px; font-weight: 600; font-size: 0.9rem;" id="lockBadge">
+            Блок
+          </div>
+        </div>
+      </div>
+
+      <!-- Свайп-контроль для разблокировки -->
+      <div class="swipe-control animate-slide" id="swipeControl">
+        <div style="margin-bottom: 12px; font-weight: 600;">Свайп для разблокировки</div>
+        <div class="swipe-track">
+          <div class="swipe-handle" id="swipeHandle">
+            →
+          </div>
+        </div>
+        <div style="font-size: 0.85rem; opacity: 0.9; margin-top: 12px;">Потяните вправо чтобы разблокировать</div>
+      </div>
+
+      <!-- Быстрые действия -->
+      <div class="card animate-slide">
+        <div style="font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>⚡</span> Быстрые действия
+        </div>
+        <div class="grid-3">
+          <button class="btn btn-outline" onclick="sendCommand('open_deck')" style="flex-direction: column; padding: 12px;">
+            <span style="font-size: 20px;">📦</span>
+            <span style="font-size: 0.75rem;">Декa</span>
+          </button>
+          <button class="btn btn-outline" onclick="sendCommand('find_scooter')" style="flex-direction: column; padding: 12px;">
+            <span style="font-size: 20px;">🔍</span>
+            <span style="font-size: 0.75rem;">Найти</span>
+          </button>
+          <button class="btn btn-outline" onclick="showActionSheet('power')" style="flex-direction: column; padding: 12px;">
+            <span style="font-size: 20px;">🔋</span>
+            <span style="font-size: 0.75rem;">Питание</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Режимы скорости -->
+      <div class="card animate-slide">
+        <div style="font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>🎮</span> Режим скорости
+        </div>
+        <div class="grid-3">
+          <button class="btn btn-outline" onclick="sendCommand('mode_normal')" style="padding: 12px;">
+            Стандарт
+          </button>
+          <button class="btn btn-outline" onclick="sendCommand('mode_eco')" style="padding: 12px;">
+            Эко
+          </button>
+          <button class="btn btn-outline active" onclick="sendCommand('mode_sport')" style="padding: 12px;">
+            Спорт
+          </button>
+        </div>
+      </div>
+
+      <!-- Управление функциями -->
+      <div class="card animate-slide">
+        <div style="font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>🔧</span> Управление
+        </div>
+        <div class="grid-2">
+          <button class="btn btn-outline" onclick="toggleFunction('headlight')" id="headlightBtn" style="padding: 14px;">
+            <span>💡</span> Фары
+          </button>
+          <button class="btn btn-outline" onclick="toggleFunction('beep')" id="beepBtn" style="padding: 14px;">
+            <span>🔊</span> Звук
+          </button>
+        </div>
+      </div>
+
+      <!-- Лимит скорости -->
+      <div class="card animate-slide">
+        <div style="font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>📏</span> Лимит скорости
+          </div>
+          <div style="font-size: 1.2rem; font-weight: 700;" id="speedLimitValue">35 км/ч</div>
+        </div>
+        <div class="slider-container">
+          <input type="range" min="15" max="35" value="35" step="5" class="slider" id="speedSlider" onchange="updateSpeedLimit(this.value)">
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--secondary);">
+            <span>15</span>
+            <span>20</span>
+            <span>25</span>
+            <span>30</span>
+            <span>35</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Подсказка жестов -->
+      <div class="gesture-hint">
+        <span class="gesture-icon">👆</span>
+        <div>Удерживайте кнопки для быстрого доступа</div>
+        <div style="font-size: 0.8rem; margin-top: 8px; opacity: 0.7;">Дважды коснитесь для блокировки/разблокировки</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Мобильная навигация -->
+  <div class="mobile-nav">
+    <a class="mobile-nav-item active" onclick="switchTab('dashboard')">
+      <span class="mobile-nav-icon">📊</span>
+      <span>Главная</span>
+    </a>
+    <a class="mobile-nav-item" onclick="switchTab('lights')">
+      <span class="mobile-nav-icon">🌈</span>
+      <span>Свет</span>
+    </a>
+    <a class="mobile-nav-item" onclick="switchTab('stats')">
+      <span class="mobile-nav-icon">📈</span>
+      <span>Статы</span>
+    </a>
+    <a class="mobile-nav-item" onclick="showActionSheet('more')">
+      <span class="mobile-nav-icon">⋯</span>
+      <span>Еще</span>
+    </a>
+  </div>
+
+  <!-- Всплывающее меню -->
+  <div class="action-sheet" id="actionSheet">
+    <div class="action-sheet-title" id="actionSheetTitle">Действия</div>
+    <div id="actionSheetContent">
+      <!-- Контент будет добавляться динамически -->
+    </div>
+    <div class="action-sheet-cancel" onclick="hideActionSheet()">Отмена</div>
+  </div>
+
+  <!-- Уведомление -->
+  <div class="notification" id="notification">
+    <div class="notification-icon">✅</div>
+    <div id="notificationText">Готово</div>
+  </div>
+
+  <script>
+    // Определение мобильного устройства
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    let currentTab = 'dashboard';
+    let isLocked = true;
+    let swipeStartX = 0;
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', function() {
+      initMobileFeatures();
+      loadStatus();
+      startAutoRefresh();
+      
+      // Предотвращение bounce на iOS
+      document.body.addEventListener('touchmove', function(e) {
+        if(e.target.classList.contains('scrollable')) return;
+        e.preventDefault();
+      }, { passive: false });
+    });
+
+    // Инициализация мобильных функций
+    function initMobileFeatures() {
+      // Настройка свайп-контроля
+      const swipeHandle = document.getElementById('swipeHandle');
+      const swipeControl = document.getElementById('swipeControl');
+      
+      if (swipeHandle) {
+        swipeHandle.addEventListener('touchstart', handleSwipeStart);
+        swipeHandle.addEventListener('touchmove', handleSwipeMove);
+        swipeHandle.addEventListener('touchend', handleSwipeEnd);
+      }
+
+      // Двойное нажатие для блокировки/разблокировки
+      let lastTap = 0;
+      document.addEventListener('touchend', function(e) {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 500 && tapLength > 0) {
+          toggleLock();
+        }
+        lastTap = currentTime;
+      });
+
+      // Долгое нажатие на кнопки
+      setupLongPress('headlightBtn', () => showActionSheet('lights'));
+      setupLongPress('beepBtn', () => showActionSheet('sound'));
+      
+      // Адаптация под iOS
+      if (isIOS) {
+        document.documentElement.style.setProperty('--safe-top', 'constant(safe-area-inset-top)');
+        document.documentElement.style.setProperty('--safe-bottom', 'constant(safe-area-inset-bottom)');
+      }
+    }
+
+    // Управление боковой панелью
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.querySelector('.sidebar-overlay');
+      
+      sidebar.classList.toggle('mobile-hidden');
+      overlay.classList.toggle('active');
+      document.body.style.overflow = sidebar.classList.contains('mobile-hidden') ? '' : 'hidden';
+    }
+
+    // Переключение вкладок
+    function switchTab(tabName) {
+      // Обновление навигации
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.mobile-nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // Показ выбранной вкладки
+      const tabElement = document.getElementById(tabName + '-tab');
+      if (tabElement) {
+        tabElement.classList.add('active');
+        tabElement.classList.add('animate-slide');
+        
+        // Обновление заголовка
+        document.getElementById('mobileTitle').textContent = getTabTitle(tabName);
+        
+        // Обновление активной иконки в навигации
+        if (tabName === 'dashboard') {
+          document.querySelectorAll('.mobile-nav-item')[0].classList.add('active');
+        }
+      }
+      
+      currentTab = tabName;
+      
+      // Закрытие боковой панели на мобильных
+      if (isMobile) {
+        toggleSidebar();
+      }
+    }
+
+    function getTabTitle(tabName) {
+      const titles = {
+        'dashboard': 'Панель управления',
+        'extended': 'Детали',
+        'lights': 'Подсветка',
+        'stats': 'Статистика',
+        'settings': 'Настройки',
+        'research': 'Исследование',
+        'system': 'Система',
+        'ota': 'Обновление'
+      };
+      return titles[tabName] || 'Управление';
+    }
+
+    // Управление свайпом
+    function handleSwipeStart(e) {
+      swipeStartX = e.touches[0].clientX;
+      e.preventDefault();
+    }
+
+    function handleSwipeMove(e) {
+      if (!swipeStartX) return;
+      
+      const currentX = e.touches[0].clientX;
+      const deltaX = currentX - swipeStartX;
+      const maxDelta = 150;
+      
+      if (deltaX > 0 && deltaX <= maxDelta) {
+        const handle = document.getElementById('swipeHandle');
+        handle.style.transform = `translateX(${deltaX}px)`;
+        handle.style.opacity = 1 - (deltaX / maxDelta) * 0.5;
+        
+        // Изменение цвета при приближении к концу
+        const progress = deltaX / maxDelta;
+        if (progress > 0.7) {
+          document.getElementById('swipeControl').style.background = 'linear-gradient(135deg, var(--success), var(--info))';
+        }
+      }
+    }
+
+    function handleSwipeEnd(e) {
+      if (!swipeStartX) return;
+      
+      const endX = e.changedTouches[0].clientX;
+      const deltaX = endX - swipeStartX;
+      const threshold = 100;
+      
+      const handle = document.getElementById('swipeHandle');
+      handle.style.transform = 'translateX(0)';
+      handle.style.opacity = '1';
+      document.getElementById('swipeControl').style.background = 'linear-gradient(135deg, var(--accent), var(--info))';
+      
+      if (deltaX > threshold && isLocked) {
+        toggleLock();
+        vibrate();
+      }
+      
+      swipeStartX = 0;
+    }
+
+    // Всплывающие меню
+    function showActionSheet(type) {
+      const sheet = document.getElementById('actionSheet');
+      const title = document.getElementById('actionSheetTitle');
+      const content = document.getElementById('actionSheetContent');
+      
+      let html = '';
+      
+      switch(type) {
+        case 'power':
+          title.textContent = 'Управление питанием';
+          html = `
+            <div class="action-sheet-item" onclick="sendCommand('reboot'); hideActionSheet();">
+              <span>🔄</span>
+              <span>Перезагрузить</span>
+            </div>
+            <div class="action-sheet-item" onclick="sendCommand('power_off'); hideActionSheet();">
+              <span>⭕</span>
+              <span>Выключить</span>
+            </div>
+          `;
+          break;
+          
+        case 'lights':
+          title.textContent = 'Управление подсветкой';
+          html = `
+            <div class="action-sheet-item" onclick="setLedMode(0); hideActionSheet();">
+              <span>⚪</span>
+              <span>Выключить</span>
+            </div>
+            <div class="action-sheet-item" onclick="setLedMode(1); hideActionSheet();">
+              <span>🌈</span>
+              <span>Дыхание</span>
+            </div>
+            <div class="action-sheet-item" onclick="setLedMode(5); hideActionSheet();">
+              <span>✨</span>
+              <span>Мерцание</span>
+            </div>
+            <div class="action-sheet-item" onclick="setLedMode(7); hideActionSheet();">
+              <span>🚨</span>
+              <span>Полиция</span>
+            </div>
+          `;
+          break;
+          
+        case 'more':
+          title.textContent = 'Навигация';
+          html = `
+            <div class="action-sheet-item" onclick="switchTab('extended'); hideActionSheet();">
+              <span>🔍</span>
+              <span>Детали</span>
+            </div>
+            <div class="action-sheet-item" onclick="switchTab('settings'); hideActionSheet();">
+              <span>⚙️</span>
+              <span>Настройки</span>
+            </div>
+            <div class="action-sheet-item" onclick="switchTab('research'); hideActionSheet();">
+              <span>🔬</span>
+              <span>Исследование</span>
+            </div>
+            <div class="action-sheet-item" onclick="switchTab('ota'); hideActionSheet();">
+              <span>🔄</span>
+              <span>Обновление</span>
+            </div>
+          `;
+          break;
+      }
+      
+      content.innerHTML = html;
+      sheet.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function hideActionSheet() {
+      document.getElementById('actionSheet').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Долгое нажатие
+    function setupLongPress(elementId, callback) {
+      const element = document.getElementById(elementId);
+      let pressTimer;
+      
+      element.addEventListener('touchstart', function(e) {
+        pressTimer = setTimeout(() => {
+          callback();
+          vibrate(50);
+        }, 500);
+        e.preventDefault();
+      });
+      
+      element.addEventListener('touchend', function() {
+        clearTimeout(pressTimer);
+      });
+      
+      element.addEventListener('touchmove', function() {
+        clearTimeout(pressTimer);
+      });
+    }
+
+    // Вибрация (если поддерживается)
+    function vibrate(duration = 30) {
+      if (navigator.vibrate) {
+        navigator.vibrate(duration);
+      }
+    }
+
+    // Обновление статуса для мобильных
+    function updateMobileStatus(data) {
+      // Обновление основных значений
+      document.getElementById('batteryValue').innerHTML = `${data.battery || 0}<span class="value-unit">%</span>`;
+      document.getElementById('speedValue').innerHTML = `${data.speed || 0}<span class="value-unit">км/ч</span>`;
+      document.getElementById('tempValue').innerHTML = `${data.temperature || 0}<span class="value-unit">°C</span>`;
+      
+      // Обновление сайдбара
+      document.getElementById('sidebarBattery').textContent = `${data.battery || 0}%`;
+      
+      // Обновление состояния блокировки
+      if (data.isLocked !== undefined) {
+        isLocked = data.isLocked;
+        updateLockStatus(isLocked);
+      }
+    }
+
+    function updateLockStatus(locked) {
+      const icon = document.getElementById('lockIcon');
+      const text = document.getElementById('lockStatusText');
+      const badge = document.getElementById('lockBadge');
+      
+      if (locked) {
+        icon.textContent = '🔒';
+        text.textContent = 'Заблокирован';
+        badge.textContent = 'Блок';
+        badge.style.background = 'var(--danger)';
+      } else {
+        icon.textContent = '🔓';
+        text.textContent = 'Разблокирован';
+        badge.textContent = 'Открыт';
+        badge.style.background = 'var(--success)';
+      }
+    }
+
+    function toggleLock() {
+      if (isLocked) {
+        sendCommand('unlock');
+      } else {
+        sendCommand('lock');
+      }
+      vibrate();
+    }
+
+    function toggleFunction(func) {
+      sendCommand(func + '_toggle');
+      vibrate();
+    }
+
+    function updateSpeedLimit(value) {
+      const limit = parseInt(value) * 10;
+      document.getElementById('speedLimitValue').textContent = value + ' км/ч';
+      setSpeedLimit(limit);
+    }
+
+    // Адаптированные функции бекенда (оригинальные)
+    async function loadStatus() {
+      try {
+        const [statusRes, dataRes] = await Promise.all([
+          fetch('/status'),
+          fetch('/data')
+        ]);
+        
+        const statusData = await statusRes.json();
+        const scooterData = await dataRes.json();
+        
+        if (statusData.success) {
+          updateMobileStatus({...statusData, ...scooterData});
+        }
+      } catch (error) {
+        showNotification('Ошибка загрузки данных', 'error');
+      }
+    }
+
+    async function sendCommand(cmd) {
+      try {
+        vibrate();
+        const response = await fetch('/' + cmd);
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification(data.message || 'Команда выполнена');
+          setTimeout(loadStatus, 500);
+        } else {
+          showNotification('Ошибка: ' + data.message, 'error');
+        }
+      } catch (error) {
+        showNotification('Ошибка соединения', 'error');
+      }
+    }
+
+    function setSpeedLimit(limit) {
+      fetch('/speed_limit?limit=' + limit)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showNotification('Лимит скорости установлен: ' + (limit / 10) + ' км/ч');
+          } else {
+            showNotification('Ошибка: ' + data.message, 'error');
+          }
+        })
+        .catch(error => {
+          showNotification('Ошибка соединения', 'error');
+        });
+    }
+
+    function setLedMode(mode) {
+      fetch('/led_mode?mode=' + mode)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showNotification('Режим подсветки изменен');
+          } else {
+            showNotification('Ошибка: ' + data.message, 'error');
+          }
+        })
+        .catch(error => {
+          showNotification('Ошибка соединения', 'error');
+        });
+    }
+
+    // Автообновление
+    let autoRefreshInterval = null;
+
+    function startAutoRefresh() {
+      autoRefreshInterval = setInterval(loadStatus, 3000);
+    }
+
+    function toggleDataRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        showNotification('Автообновление выключено');
+      } else {
+        startAutoRefresh();
+        showNotification('Автообновление включено');
+      }
+    }
+
+    // Уведомления
+    function showNotification(message, type = 'info') {
+      const notification = document.getElementById('notification');
+      const text = document.getElementById('notificationText');
+      const icon = notification.querySelector('.notification-icon');
+      
+      text.textContent = message;
+      notification.className = `notification ${type}`;
+      
+      switch(type) {
+        case 'error': icon.textContent = '❌'; break;
+        case 'warning': icon.textContent = '⚠️'; break;
+        case 'success': icon.textContent = '✅'; break;
+        default: icon.textContent = 'ℹ️';
+      }
+      
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Ориентация экрана
+    window.addEventListener('orientationchange', function() {
+      setTimeout(() => {
+        // Обновление макета при смене ориентации
+        document.querySelectorAll('.animate-slide').forEach(el => {
+          el.classList.remove('animate-slide');
+          void el.offsetWidth; // Перезапуск анимации
+          el.classList.add('animate-slide');
+        });
+      }, 300);
+    });
+
+    // Предотвращение сна экрана при активном использовании
+    let wakeLock = null;
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+      } catch (err) {
+        console.log('Wake Lock не поддерживается');
+      }
+    }
+
+    // Освобождение Wake Lock при закрытии
+    window.addEventListener('beforeunload', () => {
+      if (wakeLock) {
+        wakeLock.release();
+        wakeLock = null;
+      }
+    });
+
+    // Обработка онлайн/офлайн статуса
+    window.addEventListener('online', () => {
+      showNotification('Соединение восстановлено', 'success');
+      loadStatus();
+    });
+
+    window.addEventListener('offline', () => {
+      showNotification('Нет соединения', 'error');
+    });
+
+    // Добавляем иконку для PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.log('ServiceWorker не зарегистрирован: ', err);
+        });
+      });
+    }
+
+    // Добавляем поддержку установки как PWA
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Можно показать кнопку установки
+      setTimeout(() => {
+        if (confirm('Установить приложение для быстрого доступа?')) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              showNotification('Приложение установлено', 'success');
+            }
+            deferredPrompt = null;
+          });
+        }
+      }, 5000);
+    });
+  </script>
+</body>
+</html>
