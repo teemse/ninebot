@@ -1124,7 +1124,7 @@
         <div class="swipe-track">
           <div class="swipe-progress" id="swipeProgress"></div>
           <div class="swipe-handle" id="swipeHandle" ontouchstart="handleSwipeStart(event)"
-            ontouchmove="handleSwipeMove(event)" ontouchend="toggleLock()">
+            ontouchmove="handleSwipeMove(event)" ontouchend="handleSwipeEnd(event)">
             ➜
           </div>
         </div>
@@ -1848,8 +1848,10 @@
         // Изменение цвета при достижении порога
         if (currentX > maxSwipe * 0.8) {
           document.getElementById('swipeControl').style.background = 'linear-gradient(135deg, var(--success), var(--info))';
+          document.getElementById('swipeInstruction').textContent = 'Отпустите для разблокировки';
         } else {
           document.getElementById('swipeControl').style.background = 'linear-gradient(135deg, var(--accent), var(--info))';
+          document.getElementById('swipeInstruction').textContent = 'Потяните вправо чтобы разблокировать';
         }
       });
 
@@ -1862,6 +1864,7 @@
 
         if (currentX > maxSwipe * 0.8 && isLocked) {
           // Успешный свайп
+          sendCommand('unlock');
           vibrate();
         }
 
@@ -1870,7 +1873,24 @@
           swipeHandle.style.transform = 'translateX(0)';
           swipeProgress.style.width = '0%';
           document.getElementById('swipeControl').style.background = 'linear-gradient(135deg, var(--accent), var(--info))';
+          document.getElementById('swipeInstruction').textContent = 'Потяните вправо чтобы разблокировать';
         }, 300);
+      });
+    }
+
+    // Настройка двойного нажатия
+    function setupDoubleTap() {
+      document.addEventListener('touchend', function (e) {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+
+        if (tapLength < 300 && tapLength > 0) {
+          // Двойное нажатие
+          toggleLock();
+          e.preventDefault();
+        }
+
+        lastTapTime = currentTime;
       });
     }
 
