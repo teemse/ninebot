@@ -210,6 +210,43 @@
       border: 1px solid transparent;
     }
 
+
+        /* После стилей .card */
+    .card-locked {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a52) !important;
+      border-color: #ff4757 !important;
+      color: white !important;
+    }
+
+    .card-unlocked {
+      background: linear-gradient(135deg, #1dd1a1, #10ac84) !important;
+      border-color: #00b894 !important;
+      color: white !important;
+    }
+
+    /* Чтобы текст внутри карточек был читаемым */
+    .card-locked .value-display,
+    .card-unlocked .value-display {
+      color: white !important;
+    }
+
+    .card-locked .value-unit,
+    .card-unlocked .value-unit {
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    .card-locked .btn-outline,
+    .card-unlocked .btn-outline {
+      background: rgba(255, 255, 255, 0.15) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+      color: white !important;
+    }
+
+    .card-locked .btn-outline:active,
+    .card-unlocked .btn-outline:active {
+      background: rgba(255, 255, 255, 0.25) !important;
+    }
+
     .card.interactive {
       cursor: pointer;
     }
@@ -356,6 +393,13 @@
       margin-bottom: 16px;
     }
 
+    .grid-5 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
     /* Улучшенные индикаторы */
     .value-display {
       font-size: 2.5rem;
@@ -384,6 +428,7 @@
       background: var(--gray);
       outline: none;
       margin: 15px 0;
+      position: relative;
     }
 
     input[type="range"]::-webkit-slider-thumb {
@@ -547,9 +592,16 @@
         grid-template-columns: repeat(2, 1fr);
       }
 
+
       .grid-4 {
         grid-template-columns: repeat(2, 1fr);
       }
+
+
+      .grid-5 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
 
       .value-display {
         font-size: 1.8rem;
@@ -1027,8 +1079,8 @@
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
     <div class="mobile-title" id="mobileTitle">Панель управления</div>
     <div class="mobile-actions">
-      <button class="btn btn-outline" style="padding: 8px; min-height: 40px;" onclick="toggleDataRefresh()">
-        🔄
+      <button class="btn btn-outline" style="padding: 8px; min-height: 40px; min-width: 40px;" onclick="toggleDataRefresh()">
+        🗘
       </button>
     </div>
   </div>
@@ -1099,7 +1151,7 @@
     <div id="dashboard-tab" class="tab-content active">
       <!-- Быстрый статус -->
       <div class="card animate-slide">
-        <div class="grid-3">
+        <div class="grid-5">
           <div style="text-align: center;">
             <div class="value-display" id="batteryValue">0<span class="value-unit">%</span></div>
             <div style="font-size: 0.85rem; color: var(--secondary); margin-top: 4px;">Батарея</div>
@@ -1124,7 +1176,7 @@
         <div class="swipe-track">
           <div class="swipe-progress" id="swipeProgress"></div>
           <div class="swipe-handle" id="swipeHandle" ontouchstart="handleSwipeStart(event)"
-            ontouchmove="handleSwipeMove(event)" ontouchend="toggleLock()">
+            ontouchmove="handleSwipeMove(event)" ontouchend="handleSwipeEnd(event)">
             ➜
           </div>
         </div>
@@ -1152,8 +1204,6 @@
             <span style="font-size: 20px;">🔋</span>
             <span style="font-size: 0.75rem;">Питание</span>
           </button>
-        </div>
-        <div class="grid-3" style="margin-top: 12px;">
           <button class="btn btn-outline" onclick="toggleDataRefresh()" style="flex-direction: column; padding: 12px;">
             <span style="font-size: 20px;">🔄</span>
             <span style="font-size: 0.75rem;">Автообновление</span>
@@ -1174,12 +1224,12 @@
         <div style="font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
           <span>🎮</span> Режим скорости
         </div>
-        <div class="grid-3">
-          <button class="btn btn-outline" onclick="sendCommand('mode_normal')" id="modeNormalBtn" style="padding: 12px;">
-            Стандарт
-          </button>
+        <div class="grid-5">
           <button class="btn btn-outline" onclick="sendCommand('mode_eco')" id="modeEcoBtn" style="padding: 12px;">
             Эко
+          </button>
+          <button class="btn btn-outline" onclick="sendCommand('mode_normal')" id="modeNormalBtn" style="padding: 12px;">
+            Стандарт
           </button>
           <button class="btn btn-outline active" onclick="sendCommand('mode_sport')" id="modeSportBtn" style="padding: 12px;">
             Спорт
@@ -1213,7 +1263,7 @@
           <div style="font-size: 1.2rem; font-weight: 700;" id="speedLimitValue">35 км/ч</div>
         </div>
         <div class="slider-container">
-          <input type="range" min="15" max="35" value="35" step="5" class="slider" id="speedSlider"
+          <input type="range" min="15" max="35" value="35" step="5" class="speed-slider" id="speedSlider"
             oninput="updateSpeedLimit(this.value)">
           <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--secondary);">
             <span>15</span>
@@ -1782,8 +1832,12 @@
           }
         });
       });
-
+      const slider = document.getElementById('speedSlider');
+      if (slider) {
+        updateSpeedLimit(slider.value);
+      }
       // Инициализация слайдера скорости
+
       updateSpeedLimit(35);
     }
 
@@ -1860,8 +1914,9 @@
         swipeHandle.style.transition = 'transform 0.3s ease';
         swipeProgress.style.transition = 'width 0.3s ease';
 
-        if (currentX > maxSwipe * 0.8 && isLocked) {
+        if (currentX > maxSwipe * 0.8) {
           // Успешный свайп
+          toggleLock()
           vibrate();
         }
 
@@ -2102,12 +2157,49 @@
     }
 
     function updateLockStatus(locked) {
+      // 1. Обновляем текст статуса
+      const statusElement = document.getElementById('statusText');
       if (locked) {
-        document.getElementById('statusText').textContent = 'ЗАБЛОКИРОВАН';
-        document.getElementById('statusText').style.color = 'var(--danger)';
+        statusElement.textContent = 'ЗАБЛОКИРОВАН';
+        statusElement.style.color = 'var(--danger)';
       } else {
-        document.getElementById('statusText').textContent = 'РАЗБЛОКИРОВАН';
-        document.getElementById('statusText').style.color = 'var(--success)';
+        statusElement.textContent = 'РАЗБЛОКИРОВАН';
+        statusElement.style.color = 'var(--success)';
+      }
+      
+      // 2. Изменяем цвет ТОЛЬКО ВЕРХНЕЙ КАРТОЧКИ
+      const topCard = document.querySelector('#dashboard-tab .card.animate-slide:first-child');
+      
+      if (topCard) {
+        if (locked) {
+          // Заблокировано - красный градиент
+          topCard.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a52)';
+          topCard.style.borderColor = '#ff4757';
+          topCard.style.color = 'white';
+          topCard.style.boxShadow = '0 4px 20px rgba(255, 71, 87, 0.3)';
+        } else {
+          // Разблокировано - зеленый градиент
+          topCard.style.background = 'linear-gradient(135deg, #1dd1a1, #10ac84)';
+          topCard.style.borderColor = '#00b894';
+          topCard.style.color = 'white';
+          topCard.style.boxShadow = '0 4px 20px rgba(0, 184, 148, 0.3)';
+        }
+        
+        // Обновляем цвет текста внутри карточки
+        const valueDisplays = topCard.querySelectorAll('.value-display');
+        valueDisplays.forEach(el => {
+          el.style.color = 'white';
+        });
+        
+        const valueUnits = topCard.querySelectorAll('.value-unit');
+        valueUnits.forEach(el => {
+          el.style.color = 'rgba(255, 255, 255, 0.9)';
+        });
+        
+        const secondaryTexts = topCard.querySelectorAll('[style*="color: var(--secondary)"]');
+        secondaryTexts.forEach(el => {
+          el.style.color = 'rgba(255, 255, 255, 0.85)';
+        });
       }
     }
 
