@@ -1,0 +1,529 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ninebot ES - Map Interface</title>
+  <style>
+    :root {
+      --map-bg: #1a1f2e;
+      --grid-color: rgba(255,255,255,0.05);
+      --node-active: #00ff9d;
+      --node-inactive: #4a5568;
+      --connection-line: rgba(0,255,157,0.3);
+    }
+
+    body {
+      background: var(--map-bg);
+      color: white;
+      font-family: 'Segoe UI', system-ui;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* Контейнер карты */
+    .map-container {
+      width: 100%;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+      background-image: 
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    /* Узлы карты */
+    .map-node {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 20px;
+      background: rgba(26, 32, 44, 0.9);
+      border: 2px solid var(--node-inactive);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .map-node:hover {
+      transform: scale(1.05);
+      border-color: var(--node-active);
+      box-shadow: 0 15px 40px rgba(0,255,157,0.2);
+    }
+
+    .map-node.active {
+      background: rgba(0,255,157,0.1);
+      border-color: var(--node-active);
+      box-shadow: 
+        0 0 30px rgba(0,255,157,0.3),
+        inset 0 0 20px rgba(0,255,157,0.1);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(0,255,157,0.3); }
+      50% { box-shadow: 0 0 50px rgba(0,255,157,0.5); }
+    }
+
+    .node-icon {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .node-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .node-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #48bb78;
+    }
+
+    .node-status.warning {
+      background: #ed8936;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Линии соединений */
+    .connection-line {
+      position: absolute;
+      height: 2px;
+      background: var(--connection-line);
+      transform-origin: 0 0;
+      z-index: -1;
+    }
+
+    /* Подробности узла */
+    .node-details {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: rgba(26, 32, 44, 0.95);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0,255,157,0.2);
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+    }
+
+    .node-details.active {
+      transform: translateY(0);
+    }
+
+    /* Мини-карта */
+    .minimap {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 200px;
+      height: 200px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 10px;
+      border: 2px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+    }
+
+    /* Контролы карты */
+    .map-controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .control-btn {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 12px;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    }
+
+    .control-btn:hover {
+      background: rgba(0,255,157,0.2);
+      border-color: var(--node-active);
+    }
+
+    /* Зоны влияния */
+    .influence-zone {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,255,157,0.1), transparent);
+      pointer-events: none;
+      animation: zonePulse 4s infinite;
+    }
+
+    @keyframes zonePulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+    }
+
+    /* Поиск пути */
+    .path-line {
+      position: absolute;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #00ff9d, transparent);
+      box-shadow: 0 0 10px #00ff9d;
+      z-index: -1;
+      animation: pathFlow 2s linear infinite;
+    }
+
+    @keyframes pathFlow {
+      0% { background-position: -100px 0; }
+      100% { background-position: 100px 0; }
+    }
+
+    /* Уровни доступа */
+    .security-layer {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px dashed rgba(255,255,255,0.1);
+      animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .map-node {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .node-icon {
+        font-size: 2rem;
+      }
+      
+      .minimap {
+        width: 150px;
+        height: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="map-container" id="mapContainer">
+    <!-- Контролы -->
+    <div class="map-controls">
+      <div class="control-btn">📍</div>
+      <div class="control-btn">🔍</div>
+      <div class="control-btn">🗺️</div>
+      <div class="control-btn">⚙️</div>
+    </div>
+
+    <!-- Мини-карта -->
+    <div class="minimap" id="minimap"></div>
+
+    <!-- Узлы карты -->
+    <div class="map-node active" style="top: 30%; left: 20%;" data-node="dashboard">
+      <div class="node-status"></div>
+      <div class="node-icon">📊</div>
+      <div class="node-label">Dashboard</div>
+    </div>
+
+    <div class="map-node" style="top: 60%; left: 15%;" data-node="battery">
+      <div class="node-status warning"></div>
+      <div class="node-icon">🔋</div>
+      <div class="node-label">Power Core</div>
+      <div style="font-size: 0.8rem; opacity: 0.8;">85%</div>
+    </div>
+
+    <div class="map-node" style="top: 25%; left: 50%;" data-node="controls">
+      <div class="node-icon">🎮</div>
+      <div class="node-label">Controls</div>
+      <div style="font-size: 0.8rem; opacity: 0.8;">Sport Mode</div>
+    </div>
+
+    <div class="map-node" style="top: 65%; left: 45%;" data-node="lights">
+      <div class="node-icon">🌈</div>
+      <div class="node-label">Lighting</div>
+      <div style="font-size: 0.8rem; opacity: 0.8;">Pattern 7</div>
+    </div>
+
+    <div class="map-node" style="top: 40%; left: 75%;" data-node="security">
+      <div class="node-icon">🔒</div>
+      <div class="node-label">Security</div>
+      <div style="font-size: 0.8rem; opacity: 0.8;">Active</div>
+    </div>
+
+    <div class="map-node" style="top: 70%; left: 75%;" data-node="diagnostics">
+      <div class="node-icon">🔧</div>
+      <div class="node-label">Diagnostics</div>
+      <div style="font-size: 0.8rem; opacity: 0.8;">0 Errors</div>
+    </div>
+
+    <!-- Зоны влияния -->
+    <div class="influence-zone" style="top: 30%; left: 20%; width: 300px; height: 300px;"></div>
+
+    <!-- Уровни безопасности -->
+    <div class="security-layer" style="top: 50%; left: 50%; width: 500px; height: 500px; transform: translate(-50%, -50%);"></div>
+  </div>
+
+  <!-- Подробности узла -->
+  <div class="node-details" id="nodeDetails">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="margin: 0;" id="detailTitle">Dashboard</h2>
+      <button onclick="closeDetails()" style="background: transparent; border: none; color: white; font-size: 1.5rem; cursor: pointer;">×</button>
+    </div>
+    
+    <div id="detailContent">
+      <!-- Контент будет загружаться динамически -->
+    </div>
+    
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+      <button style="flex: 1; padding: 12px; background: rgba(0,255,157,0.2); border: 1px solid #00ff9d; border-radius: 8px; color: white; cursor: pointer;">
+        Open Full View
+      </button>
+      <button style="flex: 1; padding: 12px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; cursor: pointer;">
+        Configure
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const nodes = {
+      dashboard: {
+        title: "Command Dashboard",
+        content: `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <div style="font-size: 0.9rem; color: #a0aec0;">Current Speed</div>
+              <div style="font-size: 2.5rem; font-weight: bold; color: #00ff9d;">25 km/h</div>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: #a0aec0;">Battery</div>
+              <div style="font-size: 2.5rem; font-weight: bold; color: #00ff9d;">85%</div>
+            </div>
+          </div>
+          <div style="margin-top: 20px;">
+            <div style="font-size: 0.9rem; color: #a0aec0;">Status</div>
+            <div style="color: #48bb78;">🟢 All systems operational</div>
+          </div>
+        `
+      },
+      battery: {
+        title: "Power Core Systems",
+        content: `
+          <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span>Main Battery</span>
+              <span style="color: #00ff9d;">85%</span>
+            </div>
+            <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-top: 5px;">
+              <div style="width: 85%; height: 100%; background: #00ff9d; border-radius: 3px;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span>Temperature</span>
+              <span style="color: #ed8936;">32°C</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.9rem; color: #a0aec0;">Estimated Range</div>
+            <div style="font-size: 1.2rem; font-weight: bold;">45 km</div>
+          </div>
+        `
+      },
+      controls: {
+        title: "Control Systems",
+        content: `
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button style="padding: 10px 20px; background: rgba(0,255,157,0.2); border: 1px solid #00ff9d; border-radius: 8px; color: white; cursor: pointer;">
+              ECO
+            </button>
+            <button style="padding: 10px 20px; background: #00ff9d; border: 1px solid #00ff9d; border-radius: 8px; color: black; cursor: pointer;">
+              SPORT
+            </button>
+            <button style="padding: 10px 20px; background: rgba(0,255,157,0.2); border: 1px solid #00ff9d; border-radius: 8px; color: white; cursor: pointer;">
+              TURBO
+            </button>
+          </div>
+          <div>
+            <div style="font-size: 0.9rem; color: #a0aec0;">Speed Limit</div>
+            <div style="font-size: 1.5rem; font-weight: bold;">35 km/h</div>
+          </div>
+        `
+      }
+    };
+
+    // Обработка кликов по узлам
+    document.querySelectorAll('.map-node').forEach(node => {
+      node.addEventListener('click', function() {
+        const nodeId = this.getAttribute('data-node');
+        
+        // Снимаем активный класс со всех узлов
+        document.querySelectorAll('.map-node').forEach(n => n.classList.remove('active'));
+        
+        // Добавляем активный класс текущему узлу
+        this.classList.add('active');
+        
+        // Показываем детали
+        showNodeDetails(nodeId);
+        
+        // Создаем линии соединения
+        createConnectionLines(this);
+      });
+    });
+
+    function showNodeDetails(nodeId) {
+      const details = document.getElementById('nodeDetails');
+      const title = document.getElementById('detailTitle');
+      const content = document.getElementById('detailContent');
+      
+      if (nodes[nodeId]) {
+        title.textContent = nodes[nodeId].title;
+        content.innerHTML = nodes[nodeId].content;
+        details.classList.add('active');
+      }
+    }
+
+    function closeDetails() {
+      document.getElementById('nodeDetails').classList.remove('active');
+    }
+
+    // Создание линий соединения
+    function createConnectionLines(activeNode) {
+      // Удаляем старые линии
+      document.querySelectorAll('.connection-line').forEach(line => line.remove());
+      
+      const activeRect = activeNode.getBoundingClientRect();
+      const activeCenter = {
+        x: activeRect.left + activeRect.width / 2,
+        y: activeRect.top + activeRect.height / 2
+      };
+      
+      // Соединяем с другими узлами
+      document.querySelectorAll('.map-node:not(.active)').forEach(node => {
+        const rect = node.getBoundingClientRect();
+        const center = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
+        
+        const line = document.createElement('div');
+        line.className = 'connection-line';
+        
+        const dx = center.x - activeCenter.x;
+        const dy = center.y - activeCenter.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        
+        line.style.width = length + 'px';
+        line.style.left = activeCenter.x + 'px';
+        line.style.top = activeCenter.y + 'px';
+        line.style.transform = `rotate(${angle}deg)`;
+        
+        document.querySelector('.map-container').appendChild(line);
+      });
+    }
+
+    // Инициализация мини-карты
+    function initMinimap() {
+      const minimap = document.getElementById('minimap');
+      const container = document.getElementById('mapContainer');
+      
+      // Простая реализация мини-карты
+      document.querySelectorAll('.map-node').forEach(node => {
+        const rect = node.getBoundingClientRect();
+        const mapRect = container.getBoundingClientRect();
+        
+        const x = (rect.left - mapRect.left) / mapRect.width * 100;
+        const y = (rect.top - mapRect.top) / mapRect.height * 100;
+        
+        const dot = document.createElement('div');
+        dot.style.position = 'absolute';
+        dot.style.left = x + '%';
+        dot.style.top = y + '%';
+        dot.style.width = '6px';
+        dot.style.height = '6px';
+        dot.style.background = node.classList.contains('active') ? '#00ff9d' : '#4a5568';
+        dot.style.borderRadius = '50%';
+        
+        minimap.appendChild(dot);
+      });
+    }
+
+    // Drag & Pan для карты
+    let isDragging = false;
+    let startX, startY;
+    let scrollLeft, scrollTop;
+    
+    const mapContainer = document.getElementById('mapContainer');
+    
+    mapContainer.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.pageX - mapContainer.offsetLeft;
+      startY = e.pageY - mapContainer.offsetTop;
+      scrollLeft = mapContainer.scrollLeft;
+      scrollTop = mapContainer.scrollTop;
+    });
+    
+    mapContainer.addEventListener('mouseleave', () => {
+      isDragging = false;
+    });
+    
+    mapContainer.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+    mapContainer.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.pageX - mapContainer.offsetLeft;
+      const y = e.pageY - mapContainer.offsetTop;
+      const walkX = (x - startX) * 2;
+      const walkY = (y - startY) * 2;
+      mapContainer.scrollLeft = scrollLeft - walkX;
+      mapContainer.scrollTop = scrollTop - walkY;
+    });
+
+    // Zoom карты
+    let scale = 1;
+    mapContainer.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      scale += e.deltaY * -0.01;
+      scale = Math.min(Math.max(1, scale), 3);
+      mapContainer.style.transform = `scale(${scale})`;
+    });
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', () => {
+      initMinimap();
+      createConnectionLines(document.querySelector('.map-node.active'));
+    });
+  </script>
+</body>
+</html>

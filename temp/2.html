@@ -1,0 +1,481 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ninebot ES - Health Dashboard</title>
+  <style>
+    :root {
+      --health-green: #00c896;
+      --vital-blue: #3d8bff;
+      --warning-orange: #ff9f43;
+      --critical-red: #ff6b6b;
+      --neutral-gray: #a4b0be;
+      --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    body {
+      background: #f5f7fa;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Хедер как в фитнес-трекерах */
+    .health-header {
+      background: white;
+      padding: 30px 20px;
+      border-radius: 0 0 30px 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: var(--bg-gradient);
+      opacity: 0.1;
+    }
+
+    /* Основной контейнер с карточками */
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .health-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Карточка здоровья */
+    .health-card {
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .health-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+    }
+
+    .health-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--health-green);
+    }
+
+    .card-critical::before {
+      background: var(--critical-red);
+    }
+
+    .card-warning::before {
+      background: var(--warning-orange);
+    }
+
+    /* Индикатор прогресса */
+    .health-meter {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      margin: 15px 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--health-green);
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .meter-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255,255,255,0.3), 
+        transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Графики */
+    .sparkline {
+      height: 40px;
+      margin: 15px 0;
+      position: relative;
+    }
+
+    .sparkline-path {
+      fill: none;
+      stroke: var(--vital-blue);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Панель быстрых действий */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+      gap: 15px;
+      margin: 25px 0;
+    }
+
+    .action-pill {
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 50px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      color: #495057;
+    }
+
+    .action-pill:hover {
+      background: white;
+      border-color: var(--health-green);
+      transform: scale(1.05);
+    }
+
+    .action-pill.active {
+      background: var(--health-green);
+      border-color: var(--health-green);
+      color: white;
+    }
+
+    /* Сегментированные кнопки */
+    .segmented-control {
+      display: flex;
+      background: #f1f3f4;
+      border-radius: 12px;
+      padding: 4px;
+      margin: 20px 0;
+    }
+
+    .segment {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .segment.active {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-weight: 600;
+      color: var(--health-green);
+    }
+
+    /* Уведомления */
+    .notification-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: var(--critical-red);
+      color: white;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Хлебные крошки навигации */
+    .breadcrumb-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 25px;
+      font-size: 0.9rem;
+      color: var(--neutral-gray);
+    }
+
+    .breadcrumb-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .breadcrumb-item.active {
+      color: var(--health-green);
+      font-weight: 600;
+    }
+
+    /* Фильтры и сортировка */
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 25px;
+    }
+
+    .filter-chip {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-chip.active {
+      background: var(--health-green);
+      border-color: var(--health-green);
+      color: white;
+    }
+
+    /* Аватар и профиль */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .profile-avatar {
+      width: 60px;
+      height: 60px;
+      background: var(--bg-gradient);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    /* Статистика в реальном времени */
+    .live-stats {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      border-radius: 15px;
+      padding: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 200px;
+    }
+
+    /* Анимированные иконки */
+    .icon-pulse {
+      animation: iconPulse 1.5s infinite;
+    }
+
+    @keyframes iconPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Темный режим */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #121212;
+        color: #ffffff;
+      }
+
+      .health-card {
+        background: #1e1e1e;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      }
+
+      .action-pill {
+        background: #2d2d2d;
+        border-color: #3d3d3d;
+        color: #ffffff;
+      }
+
+      .segmented-control {
+        background: #2d2d2d;
+      }
+
+      .segment.active {
+        background: #3d3d3d;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Хедер -->
+  <div class="health-header">
+    <div class="profile-header">
+      <div class="profile-avatar">🛴</div>
+      <div>
+        <h1>Ninebot ES</h1>
+        <p>Health Dashboard</p>
+      </div>
+    </div>
+    <div class="header-wave"></div>
+  </div>
+
+  <!-- Навигация -->
+  <div class="breadcrumb-nav">
+    <div class="breadcrumb-item active">📊 Dashboard</div>
+    <div>›</div>
+    <div class="breadcrumb-item">🔋 Battery</div>
+    <div>›</div>
+    <div class="breadcrumb-item">⚡ Performance</div>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="filter-bar">
+    <div class="filter-chip active">All Systems</div>
+    <div class="filter-chip">Power</div>
+    <div class="filter-chip">Safety</div>
+    <div class="filter-chip">Lights</div>
+    <div class="filter-chip">Diagnostics</div>
+  </div>
+
+  <!-- Основная сетка -->
+  <div class="health-grid">
+    <!-- Карточка батареи -->
+    <div class="health-card">
+      <div class="notification-badge"></div>
+      <h3>🔋 Battery Health</h3>
+      <div class="sparkline">
+        <svg width="100%" height="100%">
+          <path class="sparkline-path" d="M0,30 Q10,20 20,25 T40,15 T60,25 T80,10 T100,20" />
+        </svg>
+      </div>
+      <div class="health-meter">
+        <div class="meter-fill" style="width: 85%"></div>
+      </div>
+      <div class="quick-actions">
+        <div class="action-pill">🔌</div>
+        <div class="action-pill">⚡</div>
+        <div class="action-pill active">📈</div>
+      </div>
+    </div>
+
+    <!-- Карточка производительности -->
+    <div class="health-card">
+      <h3>⚡ Performance</h3>
+      <!-- Содержимое карточки -->
+    </div>
+
+    <!-- Карточка температуры -->
+    <div class="health-card card-warning">
+      <h3>🌡️ Temperature</h3>
+      <!-- Содержимое карточки -->
+    </div>
+
+    <!-- Сегментированный контроль -->
+    <div class="health-card">
+      <h3>🎮 Drive Mode</h3>
+      <div class="segmented-control">
+        <div class="segment active">ECO</div>
+        <div class="segment">NORMAL</div>
+        <div class="segment">SPORT</div>
+      </div>
+    </div>
+
+    <!-- Карточка скорости -->
+    <div class="health-card">
+      <h3>📈 Speed Analytics</h3>
+      <!-- Содержимое карточки -->
+    </div>
+
+    <!-- Карточка уведомлений -->
+    <div class="health-card card-critical">
+      <h3>🚨 Alerts</h3>
+      <!-- Содержимое карточки -->
+    </div>
+  </div>
+
+  <!-- Live Stats в углу -->
+  <div class="live-stats">
+    <div>⚡ 85% • 🚀 25km/h • 🌡️ 32°C</div>
+  </div>
+
+  <script>
+    // Обновление индикаторов прогресса
+    function updateHealthMeters() {
+      document.querySelectorAll('.meter-fill').forEach(fill => {
+        const randomValue = Math.random() * 100;
+        fill.style.width = `${randomValue}%`;
+        
+        // Изменение цвета в зависимости от значения
+        if (randomValue < 20) {
+          fill.style.background = 'var(--critical-red)';
+        } else if (randomValue < 50) {
+          fill.style.background = 'var(--warning-orange)';
+        } else {
+          fill.style.background = 'var(--health-green)';
+        }
+      });
+    }
+
+    // Анимация спарклайнов
+    function animateSparklines() {
+      document.querySelectorAll('.sparkline-path').forEach(path => {
+        const length = path.getTotalLength();
+        path.style.strokeDasharray = length;
+        path.style.strokeDashoffset = length;
+        
+        // Анимация рисования
+        path.animate([
+          { strokeDashoffset: length },
+          { strokeDashoffset: 0 }
+        ], {
+          duration: 1500,
+          easing: 'ease-out',
+          fill: 'forwards'
+        });
+      });
+    }
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', () => {
+      updateHealthMeters();
+      animateSparklines();
+      
+      // Обновление каждые 5 секунд
+      setInterval(updateHealthMeters, 5000);
+    });
+  </script>
+</body>
+</html>

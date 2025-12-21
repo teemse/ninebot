@@ -1,0 +1,466 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ninebot ES - Command Center</title>
+  <style>
+    :root {
+      --space-black: #0a0e17;
+      --space-blue: #1a5fb4;
+      --cyber-green: #00ff9d;
+      --cyber-purple: #b400ff;
+      --hud-yellow: #ffcc00;
+      --hud-red: #ff3333;
+      --glass-bg: rgba(16, 20, 31, 0.7);
+      --neon-glow: 0 0 10px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: 
+        radial-gradient(ellipse at top, #0a0e17 0%, #000000 100%),
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="10" cy="10" r="0.5" fill="white" opacity="0.7"/><circle cx="30" cy="45" r="0.3" fill="white" opacity="0.5"/><circle cx="70" cy="20" r="0.4" fill="white" opacity="0.6"/></svg>');
+      color: white;
+      font-family: 'Orbitron', 'Segoe UI', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* HUD линия */
+    .hud-line {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, 
+        transparent, 
+        var(--cyber-green), 
+        var(--cyber-purple), 
+        transparent);
+      z-index: 1000;
+      box-shadow: 0 0 20px var(--cyber-green);
+    }
+
+    /* Основной контейнер */
+    .starship-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+      padding: 20px;
+      gap: 15px;
+      position: relative;
+    }
+
+    /* Командная панель сверху */
+    .command-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 255, 157, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .command-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, 
+        var(--cyber-purple), 
+        var(--cyber-green), 
+        var(--hud-yellow));
+    }
+
+    /* Центральная информация */
+    .hud-display {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      position: relative;
+    }
+
+    @media (min-width: 768px) {
+      .hud-display {
+        grid-template-columns: 2fr 1fr;
+      }
+    }
+
+    /* Главные показатели */
+    .core-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .stat-panel {
+      background: linear-gradient(145deg, 
+        rgba(26, 95, 180, 0.3), 
+        rgba(0, 20, 40, 0.5));
+      border: 1px solid rgba(0, 255, 157, 0.2);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .stat-panel::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, 
+        transparent, 
+        var(--cyber-green), 
+        transparent);
+    }
+
+    .stat-value {
+      font-size: 3rem;
+      font-weight: 900;
+      background: linear-gradient(45deg, #00ff9d, #00b8ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+      margin: 10px 0;
+    }
+
+    /* Круговые индикаторы */
+    .radial-gauge {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .gauge-circle {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    .gauge-bg {
+      stroke: rgba(255, 255, 255, 0.1);
+    }
+
+    .gauge-value {
+      stroke: var(--cyber-green);
+      stroke-dasharray: 314;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    /* Панель действий */
+    .action-deck {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .action-button {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(0, 255, 157, 0.3);
+      border-radius: 8px;
+      padding: 15px 10px;
+      color: white;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-button:hover {
+      background: rgba(0, 255, 157, 0.1);
+      border-color: var(--cyber-green);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 255, 157, 0.2);
+    }
+
+    .action-button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(0, 255, 157, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.3s, height 0.3s;
+    }
+
+    .action-button:active::before {
+      width: 100px;
+      height: 100px;
+    }
+
+    /* Боковые панели */
+    .side-panel {
+      background: var(--glass-bg);
+      border: 1px solid rgba(180, 0, 255, 0.2);
+      border-radius: 12px;
+      padding: 15px;
+      overflow-y: auto;
+      max-height: 500px;
+    }
+
+    /* Навигация в виде планетария */
+    .stellar-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .nav-planet {
+      background: radial-gradient(circle at 30% 30%, 
+        rgba(180, 0, 255, 0.3), 
+        rgba(0, 0, 0, 0.5));
+      border: 1px solid rgba(180, 0, 255, 0.4);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .nav-planet.active {
+      background: radial-gradient(circle at 30% 30%, 
+        rgba(0, 255, 157, 0.5), 
+        rgba(0, 0, 0, 0.5));
+      border-color: var(--cyber-green);
+      transform: scale(1.1);
+      box-shadow: 0 0 20px var(--cyber-green);
+    }
+
+    .nav-planet::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      animation: orbit 3s linear infinite;
+    }
+
+    @keyframes orbit {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Сектора дисплея */
+    .sector {
+      background: rgba(10, 14, 23, 0.8);
+      border: 1px solid rgba(255, 204, 0, 0.2);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      position: relative;
+    }
+
+    .sector::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 5px;
+      height: 100%;
+      background: linear-gradient(to bottom, 
+        var(--cyber-purple), 
+        var(--cyber-green));
+    }
+
+    /* Анимация сканирования */
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, 
+        transparent, 
+        var(--cyber-green), 
+        transparent);
+      animation: scan 2s linear infinite;
+    }
+
+    @keyframes scan {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+
+    /* Модальные окна как голограммы */
+    .holo-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 14, 23, 0.95);
+      border: 2px solid var(--cyber-green);
+      border-radius: 10px;
+      padding: 30px;
+      z-index: 1000;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 
+        0 0 50px rgba(0, 255, 157, 0.3),
+        inset 0 0 20px rgba(0, 255, 157, 0.1);
+      animation: holoAppear 0.5s ease-out;
+    }
+
+    @keyframes holoAppear {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .core-stats {
+        grid-template-columns: 1fr;
+      }
+      
+      .command-panel {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .stellar-nav {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .stat-value {
+        font-size: 2.5rem;
+      }
+    }
+
+    /* Темный/светлый режим */
+    @media (prefers-color-scheme: light) {
+      body {
+        background: linear-gradient(135deg, #e0e5ec, #c2c8d6);
+        color: #1a1a1a;
+      }
+      
+      .stat-panel {
+        background: rgba(255, 255, 255, 0.8);
+        border-color: rgba(26, 95, 180, 0.3);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hud-line"></div>
+  
+  <div class="starship-container">
+    <!-- Командная панель -->
+    <div class="command-panel">
+      <div class="scan-line"></div>
+      <!-- Быстрые команды будут здесь -->
+    </div>
+    
+    <!-- Основной HUD -->
+    <div class="hud-display">
+      <div>
+        <!-- Основные показатели -->
+        <div class="core-stats">
+          <div class="stat-panel">
+            <div>⚡ МОЩНОСТЬ</div>
+            <div class="stat-value" id="powerValue">85%</div>
+            <div class="radial-gauge">
+              <svg viewBox="0 0 100 100">
+                <circle class="gauge-circle gauge-bg" cx="50" cy="50" r="45"></circle>
+                <circle class="gauge-circle gauge-value" cx="50" cy="50" r="45" 
+                        stroke-dashoffset="188.4"></circle>
+              </svg>
+            </div>
+          </div>
+          <!-- Аналогично для других показателей -->
+        </div>
+        
+        <!-- Панель действий -->
+        <div class="action-deck">
+          <!-- Кнопки действий -->
+        </div>
+        
+        <!-- Сектора информации -->
+        <div class="sector">
+          <h3>🎮 СИСТЕМА УПРАВЛЕНИЯ</h3>
+          <!-- Элементы управления -->
+        </div>
+      </div>
+      
+      <!-- Боковая панель -->
+      <div class="side-panel">
+        <h3>🌌 НАВИГАЦИЯ</h3>
+        <div class="stellar-nav">
+          <!-- Планеты-кнопки навигации -->
+        </div>
+        
+        <div class="sector">
+          <h3>📡 СТАТУС</h3>
+          <!-- Статусная информация -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Нижняя панель -->
+    <div class="command-panel">
+      <!-- Дополнительные элементы управления -->
+    </div>
+  </div>
+  
+  <script>
+    // Инициализация круговых индикаторов
+    function updateGauge(elementId, value) {
+      const circle = document.querySelector(`#${elementId} .gauge-value`);
+      const radius = 45;
+      const circumference = 2 * Math.PI * radius;
+      const offset = circumference - (value / 100 * circumference);
+      circle.style.strokeDashoffset = offset;
+    }
+    
+    // Анимация сканирования
+    setInterval(() => {
+      document.querySelectorAll('.scan-line').forEach(line => {
+        line.style.animation = 'none';
+        setTimeout(() => line.style.animation = 'scan 2s linear infinite', 10);
+      });
+    }, 2000);
+    
+    // Звуковые эффекты (опционально)
+    function playSound(effect) {
+      if (!window.soundEnabled) return;
+      // Реализация звуковых эффектов
+    }
+  </script>
+</body>
+</html>
