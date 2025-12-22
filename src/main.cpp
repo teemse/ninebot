@@ -1179,6 +1179,11 @@ void setup() {
     server.on("/scan_read", handleScanRead);
     server.on("/scan_write", handleScanWrite);
 
+    // Обслуживание статических файлов
+    server.serveStatic("/style.css", LittleFS, "/style.css");
+    server.serveStatic("/script.js", LittleFS, "/script.js");
+    server.serveStatic("/head.png", LittleFS, "/head.png");
+
     // НАСТРОЙКА OTA СЕРВЕРА (ВАЖНО!)
     httpUpdater.setup(&server, OTA_PATH, OTA_USERNAME, OTA_PASSWORD);
     server.onNotFound(handleNotFound);

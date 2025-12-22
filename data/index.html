@@ -1299,22 +1299,22 @@
                 Батарея
               </div>
             </div>
-            <!-- <div style="text-align: center">
+            <div style="text-align: center">
               <div class="value-display" id="actualRangeValue">
-                0<span style="font-size: 0.8rem">км</span>
+                0<span class="value-unit">км</span>
               </div>
               <div style="font-size: 0.85rem; color: white; margin-top: 4px">
                 Запас хода
               </div>
-            </div> -->
-            <div style="text-align: center">
+            </div>
+            <!-- <div style="text-align: center">
               <div class="value-display" id="speedValue">
                 0<span class="value-unit">км/ч</span>
               </div>
               <div style="font-size: 0.85rem; color: white; margin-top: 4px">
                 Скорость
               </div>
-            </div>
+            </div> -->
             <div style="text-align: center">
               <div class="value-display" id="tempValue">
                 0<span class="value-unit">°C</span>
@@ -1325,7 +1325,7 @@
             </div>
           </div>
           <img
-            src="image/head.png"
+            src="head.png"
             alt="Описание изображения"
             style="max-width: 100%" />
           <div
@@ -2443,10 +2443,10 @@
         );
       let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       let currentTab = "dashboard";
-      let isLocked = true;
       let autoRefreshInterval = null;
       let lastTapTime = 0;
       let scanActive = false;
+      let isLocked = false;
 
       // Инициализация
       document.addEventListener("DOMContentLoaded", function () {
@@ -2800,47 +2800,47 @@
       }
 
       // Обновление статуса для мобильных
-      function updateMobileStatus(data) {
-        // Обновление основных значений
-        document.getElementById("batteryValue").innerHTML = `${
-          data.battery || 0
-        }<span class="value-unit">%</span>`;
-        document.getElementById("speedValue").innerHTML = `${
-          data.speed || 0
-        }<span class="value-unit">км/ч</span>`;
-        document.getElementById("tempValue").innerHTML = `${
-          data.temperature || 0
-        }<span class="value-unit">°C</span>`;
+      // function updateMobileStatus(data) {
+      //   // Обновление основных значений
+      //   document.getElementById("batteryValue").innerHTML = `${
+      //     data.battery || 0
+      //   }<span class="value-unit">%</span>`;
+      //   document.getElementById("speedValue").innerHTML = `${
+      //     data.speed || 0
+      //   }<span class="value-unit">км/ч</span>`;
+      //   document.getElementById("tempValue").innerHTML = `${
+      //     data.temperature || 0
+      //   }<span class="value-unit">°C</span>`;
 
-        // Обновление статуса
-        document.getElementById("statusText").textContent =
-          data.statusText || "Загрузка...";
+      //   // Обновление статуса
+      //   document.getElementById("statusText").textContent =
+      //     data.statusText || "Загрузка...";
 
-        // Обновление сайдбара
-        document.getElementById("sidebarBattery").textContent = `${
-          data.battery || 0
-        }%`;
-        document.getElementById("sidebarSpeed").textContent = `Скорость: ${
-          data.speed || 0
-        } км/ч`;
+      //   // Обновление сайдбара
+      //   document.getElementById("sidebarBattery").textContent = `${
+      //     data.battery || 0
+      //   }%`;
+      //   document.getElementById("sidebarSpeed").textContent = `Скорость: ${
+      //     data.speed || 0
+      //   } км/ч`;
 
-        // Обновление состояния блокировки
-        if (data.isLocked !== undefined) {
-          isLocked = data.isLocked;
-          updateLockStatus(isLocked);
-        }
+      //   // Обновление состояния блокировки
+      //   if (data.isLocked !== undefined) {
+      //     isLocked = data.isLocked;
+      //     updateLockStatus(isLocked);
+      //   }
 
-        // Обновление статуса соединения
-        if (data.connected) {
-          document.getElementById("connectionStatus").style.background =
-            "var(--success)";
-          document.getElementById("connectionText").textContent = "Подключено";
-        } else {
-          document.getElementById("connectionStatus").style.background =
-            "var(--danger)";
-          document.getElementById("connectionText").textContent = "Отключено";
-        }
-      }
+      //   // Обновление статуса соединения
+      //   if (data.connected) {
+      //     document.getElementById("connectionStatus").style.background =
+      //       "var(--success)";
+      //     document.getElementById("connectionText").textContent = "Подключено";
+      //   } else {
+      //     document.getElementById("connectionStatus").style.background =
+      //       "var(--danger)";
+      //     document.getElementById("connectionText").textContent = "Отключено";
+      //   }
+      // }
 
       function updateLockStatus(locked) {
         // 1. Обновляем текст статуса
@@ -2927,18 +2927,29 @@
       async function loadStatus() {
         try {
           const [statusRes, dataRes] = await Promise.all([
-            fetch("/status"),
-            fetch("/data"),
+            fetch('/status'),
+            fetch('/data')
           ]);
-
+          
+          // ДОБАВЬТЕ ЛОГИРОВАНИЕ:
+          console.log('Status response:', statusRes);
+          console.log('Data response:', dataRes);
+          
           const statusData = await statusRes.json();
           const scooterData = await dataRes.json();
+          
+          console.log('Status JSON:', statusData);
+          console.log('Scooter JSON:', scooterData);
 
-          if (statusData.success) {
+          if (true) {
             // Обновление основных значений
             const batteryValue = scooterData.battery || 0;
-            const speedValue = scooterData.speed || 0;
+            const actualRangeValue = scooterData.actualRange || 0;
             const tempValue = scooterData.temperature || 0;
+            const speedValue = scooterData.speed || 0;
+            // console.log('batteryValue', batteryValue);
+            // console.log('actualRange:', actualRangeValue);
+            // console.log('tempValue:', tempValue);
 
             // Оригинальный элемент батареи
             document.getElementById(
@@ -2952,15 +2963,15 @@
             );
 
             document.getElementById(
-              "speedValue"
-            ).innerHTML = `${speedValue}<span class="value-unit">км/ч</span>`;
+              "actualRangeValue"
+            ).innerHTML = `${actualRangeValue}<span class="value-unit">км</span>`;
             document.getElementById(
               "tempValue"
             ).innerHTML = `${tempValue}<span class="value-unit">°C</span>`;
 
             // Обновление статуса
             document.getElementById("statusText").textContent =
-              scooterData.statusText || "Загрузка...";
+              statusData.success || "Загрузка...";
 
             // Обновление сайдбара
             document.getElementById(
@@ -2971,13 +2982,14 @@
             ).textContent = `Скорость: ${speedValue} км/ч`;
 
             // Обновление состояния блокировки
-            if (scooterData.isLocked !== undefined) {
-              isLocked = scooterData.isLocked;
-              updateLockStatus(isLocked);
-            }
+
+            isLocked = statusData.isLocked;
+            console.log('isLocked:', statusData.isLocked);
+            updateLockStatus(isLocked);
+
 
             // Обновление статуса соединения
-            if (statusData.connected) {
+            if (statusData.success) {
               document.getElementById("connectionStatus").style.background =
                 "var(--success)";
               document.getElementById("connectionText").textContent =
@@ -3062,21 +3074,21 @@
           });
       }
 
-      function setLedColor(colorNum, value) {
-        fetch("/led_color?color=" + colorNum + "&value=" + value)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              showNotification("Цвет подсветки изменен");
-            } else {
-              showNotification("Ошибка: " + data.message, "error");
-            }
-          })
-          .catch((error) => {
-            console.error("Ошибка изменения цвета подсветки:", error);
-            showNotification("Ошибка соединения", "error");
-          });
-      }
+    function setLedColor(colorIndex, color) {
+      fetch('/led_color?index=' + colorIndex + '&color=' + color.toString(16))
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showNotification('Цвет ' + colorIndex + ' установлен');
+            updateColorButtons(colorIndex, color);
+          } else {
+            showNotification('Ошибка: ' + data.message, true);
+          }
+        })
+        .catch(error => {
+          showNotification('Ошибка соединения', true);
+        });
+    }
 
       function toggleBeepAlarm(enabled) {
         fetch("/beep_alarm?enabled=" + (enabled ? "1" : "0"))
