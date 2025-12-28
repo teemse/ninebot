@@ -1,0 +1,32 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g., 1.2.3)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Update version in platformio.ini
+      run: |
+        VERSION="${{ github.event.inputs.version }}"
+        sed -i "s/FW_VERSION\s*=\s*\".*\"/FW_VERSION = \"$VERSION\"/" platformio.ini
+        
+        # Коммитим изменение версии
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add platformio.ini
+        git commit -m "chore: update version to $VERSION"
+        git push origin dev
+        
+        # Создаем тег
+        git tag -a "v$VERSION" -m "Release v$VERSION"
+        git push origin "v$VERSION"

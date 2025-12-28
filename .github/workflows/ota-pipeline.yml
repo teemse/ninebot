@@ -1,0 +1,143 @@
+name: OTA Pipeline
+
+on:
+  push:
+    branches: [dev]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  FIRMWARE_NAME: "esk8-controller"
+
+jobs:
+  test-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup PlatformIO
+      run: pip install platformio
+    
+    - name: Build Dev Firmware
+      run: |
+        echo "Building dev firmware..."
+        
+        # Получаем короткий хеш коммита
+        COMMIT_HASH=$(echo "${{ github.sha }}" | cut -c1-8)
+        
+        pio run -e nodemcuv2 \
+          --build-flags="-D FW_VERSION=\\\"dev-$COMMIT_HASH\\\" -D DEBUG=1"
+        
+        SIZE=$(stat -c%s .pio/build/nodemcuv2/firmware.bin)
+        echo "Firmware size: $SIZE bytes"
+        if [ $SIZE -gt 1000000 ]; then
+          echo "⚠️ Warning: Firmware > 1MB, consider optimization"
+        fi
+    
+    - name: Upload Dev Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: dev-firmware
+        path: .pio/build/nodemcuv2/firmware.bin
+        retention-days: 7
+
+  build-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Extract Version
+      id: get_version
+      run: |
+        # Убираем 'refs/tags/v' из начала
+        VERSION="${GITHUB_REF#refs/tags/v}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    - name: Setup PlatformIO
+      run: pip install platformio
+    
+    - name: Build Release Firmware
+      run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
+        
+        # Чистая сборка
+        pio run -e nodemcuv2 -t clean
+        
+        # Сборка с версией
+        pio run -e nodemcuv2 \
+          --build-flags="-D FW_VERSION=\\\"$VERSION\\\" -D RELEASE=1"
+    
+    - name: Generate OTA Files
+      run: |
+        mkdir -p release
+        
+        VERSION="${{ steps.get_version.outputs.version }}"
+        BIN_PATH=".pio/build/nodemcuv2/firmware.bin"
+        
+        # Копируем прошивку
+        cp $BIN_PATH release/${{ env.FIRMWARE_NAME }}-$VERSION.bin
+        
+        # Вычисляем хеши
+        MD5=$(md5sum $BIN_PATH | awk '{print $1}')
+        SHA256=$(sha256sum $BIN_PATH | awk '{print $1}')
+        SIZE=$(stat -c%s $BIN_PATH)
+        
+        # Создаём firmware.json
+        cat > release/firmware.json <<EOF
+        {
+          "version": "$VERSION",
+          "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/${{ env.FIRMWARE_NAME }}-$VERSION.bin",
+          "checksum": "$MD5",
+          "sha256": "$SHA256",
+          "size": $SIZE,
+          "build_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        }
+        EOF
+        
+        # Авто-сгенерированный changelog
+        echo "# Release v$VERSION" > release/CHANGELOG.md
+        echo "" >> release/CHANGELOG.md
+        echo "## Changes since last release:" >> release/CHANGELOG.md
+        echo "" >> release/CHANGELOG.md
+        
+        # Находим предыдущий тег
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -n "$PREV_TAG" ]; then
+          # Коммиты между тегами
+          git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> release/CHANGELOG.md
+        else
+          # Последние 10 коммитов если первый тег
+          git log --pretty=format:"- %s (%h)" -10 >> release/CHANGELOG.md
+        fi
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "v${{ steps.get_version.outputs.version }}"
+        body_path: release/CHANGELOG.md
+        files: |
+          release/*.bin
+          release/*.json
+        draft: false
+        prerelease: false
+    
+    - name: Deploy to OTA Server
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./release
+        publish_branch: gh-pages
+        destination_dir: ./firmware
+        keep_files: true
+        force_orphan: false
