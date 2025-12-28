@@ -29,14 +29,14 @@ jobs:
         # Получаем короткий хеш коммита
         COMMIT_HASH=$(echo "${{ github.sha }}" | cut -c1-8)
         
-        pio run -e nodemcuv2 \
+        pio run -e huzzah \
       
     
     - name: Upload Dev Build
       uses: actions/upload-artifact@v4
       with:
         name: dev-firmware
-        path: .pio/build/nodemcuv2/firmware.bin
+        path: .pio/build/huzzah/firmware.bin
         retention-days: 7
 
   build-release:
@@ -65,10 +65,10 @@ jobs:
         VERSION="${{ steps.get_version.outputs.version }}"
         
         # Чистая сборка
-        pio run -e nodemcuv2 -t clean
+        pio run -e huzzah -t clean
         
         # Сборка с версией
-        pio run -e nodemcuv2 \
+        pio run -e huzzah \
           --build-flags="-D FW_VERSION=\\\"$VERSION\\\" -D RELEASE=1"
     
     - name: Generate OTA Files
@@ -76,7 +76,7 @@ jobs:
         mkdir -p release
         
         VERSION="${{ steps.get_version.outputs.version }}"
-        BIN_PATH=".pio/build/nodemcuv2/firmware.bin"
+        BIN_PATH=".pio/build/huzzah/firmware.bin"
         
         # Копируем прошивку
         cp $BIN_PATH release/${{ env.FIRMWARE_NAME }}-$VERSION.bin
