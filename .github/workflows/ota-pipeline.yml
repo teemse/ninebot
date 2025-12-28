@@ -30,7 +30,6 @@ jobs:
         COMMIT_HASH=$(echo "${{ github.sha }}" | cut -c1-8)
         
         pio run -e huzzah \
-          --build-flags="-D FW_VERSION=\\\"dev-$COMMIT_HASH\\\" -D DEBUG=1"
         
         SIZE=$(stat -c%s .pio/build/huzzah/firmware.bin)
         echo "Firmware size: $SIZE bytes"
@@ -75,7 +74,6 @@ jobs:
         
         # Сборка с версией
         pio run -e huzzah \
-          --build-flags="-D FW_VERSION=\\\"$VERSION\\\" -D RELEASE=1"
     
     - name: Generate OTA Files
       run: |
