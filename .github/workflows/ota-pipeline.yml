@@ -8,7 +8,8 @@ on:
     branches: [main]
 
 env:
-  FIRMWARE_NAME: "esk8-controller"
+  FIRMWARE_NAME: "ninebot-controller"
+  FILESYSTEM_NAME: "ninebot-fs"
 
 jobs:
   test-dev:
@@ -29,7 +30,7 @@ jobs:
         # Получаем короткий хеш коммита
         COMMIT_HASH=$(echo "${{ github.sha }}" | cut -c1-8)
         
-        pio run -e huzzah \
+        pio run -e huzzah
         
         SIZE=$(stat -c%s .pio/build/huzzah/firmware.bin)
         echo "Firmware size: $SIZE bytes"
@@ -37,11 +38,32 @@ jobs:
           echo "⚠️ Warning: Firmware > 1MB, consider optimization"
         fi
     
+    - name: Build Dev Filesystem
+      run: |
+        echo "Building dev Filesystem..."
+        pio run -t buildfs -e huzzah
+        
+        # Проверяем размер файловой системы
+        if [ -f ".pio/build/huzzah/spiffs.bin" ]; then
+          FS_FILE=".pio/build/huzzah/spiffs.bin"
+        elif [ -f ".pio/build/huzzah/littlefs.bin" ]; then
+          FS_FILE=".pio/build/huzzah/littlefs.bin"
+        else
+          echo "⚠️ Warning: No filesystem image found"
+          exit 0
+        fi
+        
+        FS_SIZE=$(stat -c%s "$FS_FILE")
+        echo "Filesystem size: $FS_SIZE bytes"
+
     - name: Upload Dev Build
       uses: actions/upload-artifact@v4
       with:
         name: dev-firmware
-        path: .pio/build/huzzah/firmware.bin
+        path: |
+          .pio/build/huzzah/firmware.bin
+          .pio/build/huzzah/spiffs.bin
+          .pio/build/huzzah/littlefs.bin
         retention-days: 7
 
   build-release:
@@ -73,8 +95,13 @@ jobs:
         pio run -e huzzah -t clean
         
         # Сборка с версией
-        pio run -e huzzah \
+        pio run -e huzzah
     
+    - name: Build Release Filesystem
+      run: |
+        echo "Building Release Filesystem..."
+        pio run -t buildfs -e huzzah
+
     - name: Generate OTA Files
       run: |
         mkdir -p release
@@ -85,19 +112,57 @@ jobs:
         # Копируем прошивку
         cp $BIN_PATH release/${{ env.FIRMWARE_NAME }}-$VERSION.bin
         
-        # Вычисляем хеши
+        # Копируем файловую систему (если есть)
+        if [ -f ".pio/build/huzzah/spiffs.bin" ]; then
+          cp .pio/build/huzzah/spiffs.bin release/${{ env.FILESYSTEM_NAME }}-$VERSION.bin
+          FS_PATH=".pio/build/huzzah/spiffs.bin"
+        elif [ -f ".pio/build/huzzah/littlefs.bin" ]; then
+          cp .pio/build/huzzah/littlefs.bin release/${{ env.FILESYSTEM_NAME }}-$VERSION.bin
+          FS_PATH=".pio/build/huzzah/littlefs.bin"
+        else
+          echo "No filesystem image to copy"
+          FS_PATH=""
+        fi
+        
+        # Вычисляем хеши для прошивки
         MD5=$(md5sum $BIN_PATH | awk '{print $1}')
         SHA256=$(sha256sum $BIN_PATH | awk '{print $1}')
         SIZE=$(stat -c%s $BIN_PATH)
         
-        # Создаём firmware.json
+        # Вычисляем хеши для файловой системы (если есть)
+        if [ -n "$FS_PATH" ]; then
+          FS_MD5=$(md5sum "$FS_PATH" | awk '{print $1}')
+          FS_SHA256=$(sha256sum "$FS_PATH" | awk '{print $1}')
+          FS_SIZE=$(stat -c%s "$FS_PATH")
+        fi
+        
+        # Создаём firmware.json с информацией о файловой системе
         cat > release/firmware.json <<EOF
         {
           "version": "$VERSION",
-          "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/${{ env.FIRMWARE_NAME }}-$VERSION.bin",
-          "checksum": "$MD5",
-          "sha256": "$SHA256",
-          "size": $SIZE,
+          "firmware": {
+            "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/${{ env.FIRMWARE_NAME }}-$VERSION.bin",
+            "checksum": "$MD5",
+            "sha256": "$SHA256",
+            "size": $SIZE
+          }
+        EOF
+        
+        # Добавляем информацию о файловой системе, если она есть
+        if [ -n "$FS_PATH" ]; then
+          cat >> release/firmware.json <<EOF
+          ,
+          "filesystem": {
+            "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/${{ env.FILESYSTEM_NAME }}-$VERSION.bin",
+            "checksum": "$FS_MD5",
+            "sha256": "$FS_SHA256",
+            "size": $FS_SIZE
+          }
+        EOF
+        fi
+        
+        cat >> release/firmware.json <<EOF
+          ,
           "build_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
         EOF
@@ -127,15 +192,6 @@ jobs:
         files: |
           release/*.bin
           release/*.json
+          release/*.md
         draft: false
         prerelease: false
-    
-    - name: Deploy to OTA Server
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./release
-        publish_branch: gh-pages
-        destination_dir: ./firmware
-        keep_files: true
-        force_orphan: false
