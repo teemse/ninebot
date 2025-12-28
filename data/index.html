@@ -184,6 +184,7 @@
         border-radius: 12px;
         text-decoration: none;
         color: var(--secondary);
+        backdrop-filter: blur(10px);
         font-size: 0.7rem;
         transition: var(--transition);
         min-height: 56px;
@@ -2931,15 +2932,8 @@
             fetch('/data')
           ]);
           
-          // ДОБАВЬТЕ ЛОГИРОВАНИЕ:
-          console.log('Status response:', statusRes);
-          console.log('Data response:', dataRes);
-          
           const statusData = await statusRes.json();
           const scooterData = await dataRes.json();
-          
-          console.log('Status JSON:', statusData);
-          console.log('Scooter JSON:', scooterData);
 
           if (true) {
             // Обновление основных значений
@@ -2947,9 +2941,6 @@
             const actualRangeValue = scooterData.actualRange || 0;
             const tempValue = scooterData.temperature || 0;
             const speedValue = scooterData.speed || 0;
-            // console.log('batteryValue', batteryValue);
-            // console.log('actualRange:', actualRangeValue);
-            // console.log('tempValue:', tempValue);
 
             // Оригинальный элемент батареи
             document.getElementById(
