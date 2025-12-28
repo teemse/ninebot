@@ -1,0 +1,128 @@
+name: OTA Pipeline
+
+on:
+  push:
+    branches: [dev]          # Тестируем на dev
+    tags: ['v*']            # Релизы по тегам
+  pull_request:
+    branches: [main]        # Проверка PR в main
+
+env:
+  FIRMWARE_NAME: "firmware"
+
+jobs:
+  # Job 1: Сборка и тестирование для dev
+  test-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup PlatformIO
+      run: pip install platformio
+    
+    - name: Build Dev Firmware
+      run: |
+        echo "Building dev firmware..."
+        pio run -e huzzah \
+          --build-flags="-D FW_VERSION=\\\"dev-${{ github.sha:0:8 }}\\\" -D DEBUG=1"
+        
+        # Проверяем размер
+        SIZE=$(stat -c%s .pio/build/huzzah/firmware.bin)
+        echo "Firmware size: $SIZE bytes"
+        if [ $SIZE -gt 1000000 ]; then
+          echo "⚠️ Warning: Firmware > 1MB, consider optimization"
+        fi
+    
+    - name: Upload Dev Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: dev-firmware
+        path: .pio/build/huzzah/firmware.bin
+        retention-days: 7
+
+  # Job 2: Сборка релиза при мерже в main (через тег)
+  build-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Полная история для changelog
+    
+    - name: Extract Version
+      id: get_version
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/v}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    - name: Setup PlatformIO
+      run: pip install platformio
+    
+    - name: Build Release Firmware
+      run: |
+        # Чистая сборка
+        pio run -e huzzah -t clean
+        pio run -e huzzah \
+          --build-flags="-D FW_VERSION=\\\"${{ steps.get_version.outputs.version }}\\\" -D RELEASE=1"
+    
+    - name: Generate OTA Files
+      run: |
+        mkdir -p release
+        
+        VERSION="${{ steps.get_version.outputs.version }}"
+        BIN_PATH=".pio/build/huzzah/firmware.bin"
+        
+        # Основной бинарник
+        cp $BIN_PATH release/${{ env.FIRMWARE_NAME }}-$VERSION.bin
+        
+        # Простой firmware.json для AutoOTA
+        MD5=$(md5sum $BIN_PATH | awk '{print $1}')
+        
+        cat > release/firmware.json <<EOF
+        {
+          "version": "$VERSION",
+          "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/${{ env.FIRMWARE_NAME }}-$VERSION.bin",
+          "checksum": "$MD5",
+          "build_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        }
+        EOF
+        
+        # Авто-сгенерированный changelog (последние коммиты)
+        echo "# Release v$VERSION" > release/CHANGELOG.md
+        echo "" >> release/CHANGELOG.md
+        echo "## Changes since last release:" >> release/CHANGELOG.md
+        echo "" >> release/CHANGELOG.md
+        # Получаем предыдущий тег
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$PREV_TAG" ]; then
+          git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> release/CHANGELOG.md
+        else
+          git log --pretty=format:"- %s (%h)" -10 >> release/CHANGELOG.md
+        fi
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "v${{ steps.get_version.outputs.version }}"
+        body_path: release/CHANGELOG.md
+        files: |
+          release/*.bin
+          release/*.json
+        draft: false
+        prerelease: false
+    
+    - name: Deploy to OTA Server
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./release
+        publish_branch: gh-pages
+        destination_dir: ./firmware
+        keep_files: true
+        force_orphan: false
