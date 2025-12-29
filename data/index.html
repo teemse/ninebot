@@ -3275,38 +3275,147 @@
         window.open("/ota_instructions", "_blank");
       }
 
-      // Обновление расширенной информации
+      // Обновление расширенной информации (вкладка "Детали")
       function updateExtendedInfo(data) {
-        const elements = [
-          "driveVoltageValue",
-          "motorCurrentValue",
-          "powerValue",
-          "avgSpeedValue",
-          "bodyTempValue",
-          "bat1TempValue",
-          "bat2TempValue",
-          "mosTempValue",
-          "battery1Value",
-          "battery2Value",
-          "actualRangeValue",
-          "predictedRangeValue",
-          "serialValue",
-          "bmsVersionValue",
-          "bms2VersionValue",
-          "bleVersionValue",
-          "boolStatusValue",
-          "alarmStatusValue",
-          "errorValue",
-        ];
+        // Маппинг DOM id -> ключи в данных с форматированием
+        const extendedMapping = {
+          // Напряжение и ток
+          "driveVoltageValue": {
+            key: "driveVoltage",
+            format: (val) => `${(val / 100).toFixed(1)}<span style="font-size: 0.8rem">V</span>`
+          },
+          "motorCurrentValue": {
+            key: "motorCurrent", 
+            format: (val) => `${(val / 100).toFixed(1)}<span style="font-size: 0.8rem">A</span>`
+          },
+          "powerValue": {
+            key: "power",
+            format: (val) => `${val}<span style="font-size: 0.8rem">W</span>`
+          },
+          "avgSpeedValue": {
+            key: "averageSpeed",
+            format: (val) => `${val}<span style="font-size: 0.8rem">км/ч</span>`
+          },
+          
+          // Температуры
+          "bodyTempValue": {
+            key: "bodyTemp",
+            format: (val) => `${val}°`
+          },
+          "bat1TempValue": {
+            key: "bat1Temp", 
+            format: (val) => `${val}°`
+          },
+          "bat2TempValue": {
+            key: "bat2Temp",
+            format: (val) => `${val}°`
+          },
+          "mosTempValue": {
+            key: "mosTemp",
+            format: (val) => `${val}°`
+          },
+          
+          // Батареи
+          "battery1Value": {
+            key: "battery1",
+            format: (val) => `${val}%`
+          },
+          "battery2Value": {
+            key: "battery2",
+            format: (val) => `${val}%`
+          },
+          "actualRangeValue": {
+            key: "actualRange",
+            format: (val) => `${val}<span style="font-size: 0.8rem">км</span>`
+          },
+          "predictedRangeValue": {
+            key: "predictedRange",
+            format: (val) => `${val}<span style="font-size: 0.8rem">км</span>`
+          },
+          
+          // Системная информация
+          "serialValue": { key: "serial" },
+          "bmsVersionValue": { key: "bmsVersion" },
+          "bms2VersionValue": { key: "bms2Version" },
+          "bleVersionValue": { key: "bleVersion" },
+          "boolStatusValue": { 
+            key: "boolStatus",
+            format: (val) => `0x${val.toString(16).toUpperCase()}`
+          },
+          "alarmStatusValue": { 
+            key: "alarmStatus",
+            format: (val) => val === 0 ? "Нет" : `0x${val.toString(16).toUpperCase()}`
+          },
+          "errorValue": { key: "errorCode" }
+        };
 
-        elements.forEach((id) => {
-          const element = document.getElementById(id);
-          if (element && data[id]) {
-            element.textContent = data[id];
+        // Обновляем каждый элемент
+        for (const [domId, mapping] of Object.entries(extendedMapping)) {
+          const element = document.getElementById(domId);
+          if (element) {
+            const value = data[mapping.key];
+            
+            if (value !== undefined && value !== null) {
+              // Форматируем значение, если есть функция форматирования
+              if (mapping.format) {
+                if (domId.includes("Value") && domId !== "serialValue") {
+                  // Для value-display элементов используем innerHTML
+                  element.innerHTML = mapping.format(value);
+                } else {
+                  // Для обычных текстовых элементов
+                  element.textContent = mapping.format(value);
+                }
+              } else {
+                element.textContent = value;
+              }
+            } else {
+              // Если данных нет
+              if (domId.includes("Value") && domId !== "serialValue") {
+                element.innerHTML = `0<span style="font-size: 0.8rem">${getUnitFromId(domId)}</span>`;
+              } else {
+                element.textContent = "N/A";
+              }
+            }
+          }
+        }
+        
+        // Дополнительная обработка для элементов, которые уже есть на других вкладках
+        // (чтобы избежать дублирования обновлений)
+        updateDuplicateElements(data);
+      }
+
+        // Вспомогательная функция для определения единиц измерения по ID
+      function getUnitFromId(id) {
+        if (id.includes("Voltage")) return "V";
+        if (id.includes("Current")) return "A";
+        if (id.includes("Speed")) return "км/ч";
+        if (id.includes("Range")) return "км";
+        if (id.includes("Temp")) return "°C";
+        if (id.includes("Power")) return "W";
+        return "";
+      }
+
+      // Функция для обновления элементов, которые есть на нескольких вкладках
+      function updateDuplicateElements(data) {
+        // Элементы, которые могут быть на разных вкладках
+        const duplicates = [
+          { id: "actualRangeValue", key: "actualRange", isHtml: true },
+          { id: "speedLimitValue", key: "speedLimit", format: (val) => `${val / 10} км/ч` }
+        ];
+        
+        duplicates.forEach(item => {
+          const element = document.getElementById(item.id);
+          if (element && data[item.key] !== undefined) {
+            if (item.format) {
+              element.textContent = item.format(data[item.key]);
+            } else if (item.isHtml) {
+              element.innerHTML = `${data[item.key]}<span style="font-size: 0.8rem">км</span>`;
+            } else {
+              element.textContent = data[item.key];
+            }
           }
         });
       }
-
       // Обновление статистики
       function updateStats(data) {
         // Маппинг DOM id -> ключи в данных
@@ -3317,17 +3426,12 @@
           "totalOperationTimeValue": "totalOperationTime",
           "totalRideTimeValue": "totalRideTime",
           "workModeValue": "workMode",
-          "speedLimitValue": "speedLimit", // Осторожно: это id уже используется для лимита скорости
           "errorCodeValue": "errorCode",
           "cruiseValue": "cruise",
           "headlightValue": "headlight",
           "beepValue": "beep"
         };
 
-        // Переименуйте в HTML, чтобы избежать конфликта с существующим speedLimitValue
-        // В HTML stats-tab измените:
-        // <span id="speedLimitValue"> на <span id="speedLimitStatValue">
-        
         // Обновляем каждый элемент
         for (const [domId, dataKey] of Object.entries(statsMapping)) {
           const element = document.getElementById(domId);
@@ -3387,6 +3491,38 @@
       // Автообновление
       function startAutoRefresh() {
         autoRefreshInterval = setInterval(loadStatus, 3000);
+      }
+
+      // Обновление OTA информации
+      function updateOTAInfo(data) {
+        const otaElements = {
+          "currentVersion": { key: "firmwareVersion", default: "Неизвестно" },
+          "freeMemory": { key: "freeMemory", format: (val) => `${val} байт`, default: "Неизвестно" },
+          "deviceId": { key: "deviceId", default: "Неизвестно" },
+          "lastUpdate": { key: "lastUpdate", default: "Никогда" },
+          "updateStatus": { 
+            key: "updateAvailable", 
+            format: (val) => val ? "Доступно обновление" : "Актуальная версия",
+            default: "Готов к обновлению" 
+          }
+        };
+        
+        for (const [domId, mapping] of Object.entries(otaElements)) {
+          const element = document.getElementById(domId);
+          if (element) {
+            const value = data[mapping.key];
+            
+            if (value !== undefined && value !== null) {
+              if (mapping.format) {
+                element.textContent = mapping.format(value);
+              } else {
+                element.textContent = value;
+              }
+            } else {
+              element.textContent = mapping.default;
+            }
+          }
+        }
       }
 
       function toggleDataRefresh() {
