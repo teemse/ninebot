@@ -1107,7 +1107,7 @@ void setup() {
     server.on("/firmware_info", HTTP_GET, []() {
         DynamicJsonDocument doc(512);
         doc["success"] = true;
-        doc["version"] = "1.2.0";
+        doc["version"] = "0.0.1";
         doc["chip_id"] = String(ESP.getChipId());
         doc["free_heap"] = ESP.getFreeHeap();
         doc["sketch_size"] = ESP.getSketchSize();
