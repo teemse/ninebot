@@ -12,8 +12,8 @@ const char* OTA_PATH = "/update"; // Стандартный путь
 
 // Настройки для подключения к существующей сети
 // УКАЖИТЕ ВАШИ ДАННЫЕ ЗДЕСЬ:
-const char* WIFI_SSID_STA = "teemse";  // Имя вашей Wi-Fi сети
-const char* WIFI_PASSWORD_STA = "turbina7";  // Пароль вашей Wi-Fi сети
+const char* WIFI_SSID_STA = "";  // Имя вашей Wi-Fi сети
+const char* WIFI_PASSWORD_STA = "";  // Пароль вашей Wi-Fi сети
 // Оставьте WIFI_SSID_STA пустым для отключения STA режима
 
 // Периоды обновления и проверки
