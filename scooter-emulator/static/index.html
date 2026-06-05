@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>СЭТ-4 «Светлячок» — Терминал v2.1</title>
+    <style>
+        /* ── ПЕРЕМЕННЫЕ ── */
+        :root {
+            --bg: #0a0a0a;
+            --surface: #111;
+            --border: #2a2a2a;
+            --text: #b0b0b0;
+            --text-bright: #d0d0d0;
+            --accent: #3a7a3a;
+            --accent-bright: #4fe34f;
+            --accent-glow: rgba(79, 227, 79, 0.3);
+            --warn: #b0a040;
+            --warn-bright: #e0d060;
+            --warn-glow: rgba(224, 208, 96, 0.3);
+            --danger: #a04040;
+            --danger-bright: #e05050;
+            --danger-glow: rgba(224, 80, 80, 0.3);
+            --info: #4060a0;
+            --info-bright: #6080e0;
+            --safe-bottom: env(safe-area-inset-bottom, 8px);
+            --safe-top: env(safe-area-inset-top, 8px);
+            --font-mono: 'Courier New', 'Liberation Mono', 'Consolas', monospace;
+            --font-size-sm: clamp(0.55rem, 1.5vw, 0.7rem);
+            --font-size-md: clamp(0.7rem, 2vw, 0.85rem);
+            --font-size-lg: clamp(1.2rem, 3.5vw, 1.8rem);
+            --btn-min: 48px;
+        }
+
+        /* ── НОЧНОЙ РЕЖИМ ── */
+        body.night-mode {
+            --bg: #0a0000;
+            --surface: #110000;
+            --border: #2a1010;
+            --text: #b09090;
+            --text-bright: #d0a0a0;
+            --accent: #7a3a3a;
+            --accent-bright: #e05050;
+            --accent-glow: rgba(224, 80, 80, 0.3);
+            --warn: #a04040;
+            --warn-bright: #e06060;
+            --danger: #a02020;
+            --danger-bright: #ff4040;
+            --info: #604040;
+            --info-bright: #a06060;
+        }
+
+        body.night-mode .mnemo-container::before {
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        /* ── БАЗОВЫЕ СТИЛИ ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        html {
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overscroll-behavior: none;
+            touch-action: manipulation;
+            background-image:
+                radial-gradient(rgba(58, 122, 58, 0.04) 1px, transparent 1px),
+                radial-gradient(rgba(58, 122, 58, 0.02) 1px, transparent 1px);
+            background-size: 24px 24px, 48px 48px;
+            background-position: 0 0, 12px 12px;
+            position: relative;
+            opacity: 1;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px);
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* ── ЭФФЕКТ ПОМЕХ ── */
+        .glitch-line {
+            position: fixed;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(79, 227, 79, 0.15);
+            pointer-events: none;
+            z-index: 998;
+            animation: glitchScan 8s linear infinite;
+        }
+        .glitch-line:nth-child(2) {
+            animation-delay: -3s;
+            animation-duration: 11s;
+            height: 1px;
+            background: rgba(79, 227, 79, 0.08);
+        }
+        .glitch-line:nth-child(3) {
+            animation-delay: -6s;
+            animation-duration: 13s;
+            height: 3px;
+            background: rgba(79, 227, 79, 0.05);
+        }
+
+        @keyframes glitchScan {
+            0% {
+                top: -5%;
+                opacity: 0;
+            }
+            5% {
+                opacity: 0.6;
+            }
+            10% {
+                opacity: 0;
+            }
+            20% {
+                top: 25%;
+                opacity: 0;
+            }
+            25% {
+                opacity: 0.4;
+            }
+            30% {
+                opacity: 0;
+            }
+            50% {
+                top: 55%;
+                opacity: 0;
+            }
+            55% {
+                opacity: 0.7;
+            }
+            60% {
+                opacity: 0;
+            }
+            75% {
+                top: 80%;
+                opacity: 0;
+            }
+            78% {
+                opacity: 0.3;
+            }
+            82% {
+                opacity: 0;
+            }
+            100% {
+                top: 105%;
+                opacity: 0;
+            }
+        }
+
+        .screen-shake {
+            animation: screenShake 0.15s ease-out;
+        }
+
+        @keyframes screenShake {
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+            25% {
+                transform: translateX(2px);
+            }
+            75% {
+                transform: translateX(-1px);
+            }
+        }
+
+        /* ── ЭКРАН ЗАГРУЗКИ ── */
+        .boot-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            color: var(--accent-bright);
+            padding: 20px;
+            transition: opacity 0.5s;
+            opacity: 1;
+            visibility: visible;
+        }
+        .boot-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .boot-header {
+            font-size: var(--font-size-lg);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px var(--accent-glow);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .boot-subtitle {
+            font-size: var(--font-size-sm);
+            letter-spacing: 2px;
+            color: var(--text);
+            opacity: 0.7;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .boot-lines {
+            width: 100%;
+            max-width: 340px;
+            font-size: 0.6rem;
+            letter-spacing: 1px;
+            line-height: 2;
+        }
+        .boot-line {
+            opacity: 0;
+            animation: bootLineIn 0.3s forwards;
+            color: var(--text);
+        }
+        .boot-line .ok {
+            color: var(--accent-bright);
+            float: right;
+        }
+        .boot-line .fail {
+            color: var(--danger-bright);
+            float: right;
+        }
+        @keyframes bootLineIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .boot-progress {
+            width: 100%;
+            max-width: 340px;
+            height: 4px;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        .boot-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+        .boot-ready {
+            margin-top: 16px;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            color: var(--accent-bright);
+            text-shadow: 0 0 8px var(--accent-glow);
+        }
+        .boot-ready.show {
+            opacity: 1;
+            animation: blink 1.5s infinite;
+        }
+
+        /* ── СТРОКА СОСТОЯНИЯ ── */
+        .status-bar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: calc(var(--safe-top) + 8px) 12px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            z-index: 100;
+            flex-shrink: 0;
+            min-height: 52px;
+        }
+        .status-bar .title {
+            font-size: var(--font-size-md);
+            color: var(--accent-bright);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--accent-glow);
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .status-bar .subtitle {
+            font-size: var(--font-size-sm);
+            color: var(--text);
+            opacity: 0.7;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+        .status-indicators {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: var(--font-size-sm);
+        }
+        .indicator {
+            text-align: center;
+            white-space: nowrap;
+        }
+        .indicator-label {
+            font-size: 0.55rem;
+            color: var(--text);
+            opacity: 0.5;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .indicator-value {
+            font-weight: bold;
+            color: var(--text-bright);
+            font-size: var(--font-size-sm);
+        }
+        .indicator-value.warn {
+            color: var(--warn-bright);
+        }
+        .indicator-value.danger {
+            color: var(--danger-bright);
+            animation: blink 0.8s infinite;
+        }
+        .indicator-value.ok {
+            color: var(--accent-bright);
+        }
+
+        @keyframes blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* ── ОСНОВНАЯ ОБЛАСТЬ ── */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 10px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            position: relative;
+        }
+
+        /* ── МНЕМОСХЕМА ── */
+        .mnemo-container {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            padding: 16px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            min-height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mnemo-container:active {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        .mnemo-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.6;
+        }
+        .mnemo-frame {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        .mnemo-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: var(--font-size-md);
+            letter-spacing: 2px;
+        }
+        .mnemo-icon {
+            font-size: 1.8rem;
+            transition: all 0.3s;
+        }
+        .mnemo-icon.ok-icon {
+            text-shadow: 0 0 8px var(--accent-glow);
+        }
+        .mnemo-icon.danger-icon {
+            text-shadow: 0 0 8px var(--danger-glow);
+            animation: blink 0.8s infinite;
+        }
+        .mnemo-icon.warn-icon {
+            text-shadow: 0 0 8px var(--warn-glow);
+            animation: chargePulse 2s infinite;
+        }
+        .mnemo-title {
+            color: var(--accent-bright);
+            text-shadow: 0 0 6px var(--accent-glow);
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .mnemo-body {
+            position: relative;
+            width: 160px;
+            height: 50px;
+            margin: 8px 0;
+        }
+        .mnemo-deck {
+            position: absolute;
+            top: 5px;
+            left: 20px;
+            right: 20px;
+            height: 28px;
+            background: #1a1a1a;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .mnemo-deck-inner {
+            height: 100%;
+            background: repeating-linear-gradient(90deg,
+                    rgba(58, 122, 58, 0.15) 0px,
+                    rgba(58, 122, 58, 0.15) 4px,
+                    transparent 4px,
+                    transparent 8px);
+        }
+        .mnemo-deck.charging .mnemo-deck-inner {
+            background: repeating-linear-gradient(90deg,
+                    rgba(79, 227, 79, 0.25) 0px,
+                    rgba(79, 227, 79, 0.25) 4px,
+                    transparent 4px,
+                    transparent 8px);
+            animation: chargeFlow 1.5s linear infinite;
+        }
+        @keyframes chargeFlow {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 16px 0;
+            }
+        }
+        .mnemo-deck.moving .mnemo-deck-inner {
+            background: repeating-linear-gradient(90deg,
+                    rgba(79, 227, 79, 0.3) 0px,
+                    rgba(79, 227, 79, 0.3) 6px,
+                    transparent 6px,
+                    transparent 10px);
+            animation: speedLines 0.3s linear infinite;
+        }
+        @keyframes speedLines {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 16px 0;
+            }
+        }
+        .mnemo-deck.error .mnemo-deck-inner {
+            background: repeating-linear-gradient(90deg,
+                    rgba(224, 80, 80, 0.3) 0px,
+                    rgba(224, 80, 80, 0.3) 4px,
+                    transparent 4px,
+                    transparent 8px);
+            animation: errorFlash 0.5s linear infinite;
+        }
+        @keyframes errorFlash {
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        .mnemo-wheels {
+            position: absolute;
+            bottom: 0;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .mnemo-wheel {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            background: #111;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .mnemo-wheel::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .mnemo-wheel.spinning {
+            border-color: var(--accent);
+        }
+        .mnemo-wheel.spinning::after {
+            background: var(--accent-bright);
+            animation: wheelSpin 0.4s linear infinite;
+        }
+        @keyframes wheelSpin {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+        .mnemo-motion {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            color: var(--accent-bright);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .mnemo-motion.active {
+            opacity: 1;
+            animation: motionDash 0.5s linear infinite;
+        }
+        @keyframes motionDash {
+            0% {
+                letter-spacing: 2px;
+            }
+            100% {
+                letter-spacing: 8px;
+            }
+        }
+        .mnemo-status {
+            padding: 4px 16px;
+            border: 1px solid var(--border);
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        .mnemo-status.locked {
+            border-color: var(--danger);
+            color: var(--danger-bright);
+        }
+        .mnemo-status.unlocked {
+            border-color: var(--accent);
+            color: var(--accent-bright);
+        }
+        .mnemo-status.charging-status {
+            border-color: var(--warn);
+            color: var(--warn-bright);
+            animation: chargePulse 2s infinite;
+        }
+        .mnemo-status.error-status {
+            border-color: var(--danger);
+            color: var(--danger-bright);
+            animation: blink 0.6s infinite;
+        }
+        @keyframes chargePulse {
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        .mnemo-info {
+            display: flex;
+            gap: 20px;
+            font-size: 0.6rem;
+            letter-spacing: 1px;
+            color: var(--text);
+            opacity: 0.7;
+        }
+        .mnemo-info b {
+            color: var(--text-bright);
+            font-weight: bold;
+        }
+
+        /* ── КНОПКИ ДЕЙСТВИЙ ── */
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .action-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-height: var(--btn-min);
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .action-btn .icon {
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+        .action-btn .label {
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+        }
+        .action-btn .sub {
+            font-size: 0.55rem;
+            opacity: 0.6;
+            letter-spacing: 1px;
+        }
+        .action-btn:active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent-bright);
+            box-shadow: 0 0 14px var(--accent-glow);
+            transform: scale(0.96);
+        }
+        .action-btn.primary {
+            border-color: var(--accent);
+            color: var(--accent-bright);
+        }
+        .action-btn.danger {
+            border-color: var(--danger);
+            color: var(--danger-bright);
+        }
+        .action-btn.danger:active {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger-bright);
+            box-shadow: 0 0 14px var(--danger-glow);
+        }
+        .action-btn.warn {
+            border-color: var(--warn);
+            color: var(--warn-bright);
+        }
+        .action-btn.warn:active {
+            background: var(--warn);
+            color: #000;
+        }
+
+        /* ── СВАЙП ── */
+        .swipe-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: center;
+            flex-shrink: 0;
+            transition: border-color 0.3s;
+        }
+        .swipe-panel.unlocked {
+            border-color: var(--accent);
+        }
+        .swipe-label {
+            font-size: var(--font-size-sm);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text);
+            opacity: 0.7;
+            margin-bottom: 10px;
+            transition: color 0.3s;
+        }
+        .swipe-panel.unlocked .swipe-label {
+            color: var(--accent-bright);
+        }
+        .swipe-track {
+            position: relative;
+            height: 44px;
+            background: #0a0a0a;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            touch-action: none;
+        }
+        .swipe-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0%;
+            background: rgba(58, 122, 58, 0.25);
+            pointer-events: none;
+        }
+        .swipe-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 44px;
+            background: var(--danger);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            z-index: 2;
+            touch-action: none;
+            cursor: grab;
+        }
+        .swipe-handle.ready {
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+        .swipe-hint {
+            font-size: 0.55rem;
+            color: var(--text);
+            opacity: 0.5;
+            letter-spacing: 1px;
+            margin-top: 8px;
+            text-transform: uppercase;
+        }
+
+        /* ── НИЖНЯЯ НАВИГАЦИЯ ── */
+        .bottom-nav {
+            display: flex;
+            gap: 4px;
+            padding: 6px;
+            padding-bottom: calc(var(--safe-bottom) + 6px);
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 100;
+        }
+        .nav-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text);
+            opacity: 0.6;
+            font-family: var(--font-mono);
+            font-size: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 2px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            transition: all 0.15s;
+            min-height: 48px;
+            justify-content: center;
+        }
+        .nav-btn .nav-icon {
+            font-size: 1.1rem;
+        }
+        .nav-btn:active,
+        .nav-btn.active {
+            border-color: var(--accent);
+            color: var(--accent-bright);
+            opacity: 1;
+            background: rgba(58, 122, 58, 0.08);
+        }
+
+        /* ── МОДАЛЬНЫЕ ОКНА ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 200;
+            display: none;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            margin: auto;
+            width: 95%;
+            max-width: 420px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 20px 16px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed var(--border);
+        }
+        .modal-title {
+            font-size: var(--font-size-md);
+            color: var(--accent-bright);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .modal-close {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 8px 14px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .modal-close:active {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger-bright);
+        }
+        .modal-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: var(--font-size-sm);
+        }
+        .modal-row .label {
+            opacity: 0.7;
+        }
+        .modal-row .value {
+            font-weight: bold;
+            color: var(--text-bright);
+        }
+        .modal-row .value.ok {
+            color: var(--accent-bright);
+        }
+        .modal-row .value.danger {
+            color: var(--danger-bright);
+        }
+        .modal-btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .modal-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        .modal-btn:active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent-bright);
+        }
+
+        /* ── ГРАФИК ── */
+        .ride-chart {
+            font-family: var(--font-mono);
+            font-size: 0.5rem;
+            line-height: 1.1;
+            white-space: pre;
+            color: var(--accent-bright);
+            background: #0a0a0a;
+            border: 1px solid var(--border);
+            padding: 10px;
+            margin-top: 12px;
+            overflow-x: auto;
+            text-align: left;
+        }
+
+        /* ── ЖУРНАЛ СОБЫТИЙ ── */
+        .event-log {
+            font-family: var(--font-mono);
+            font-size: 0.55rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            color: var(--text);
+            background: #0a0a0a;
+            border: 1px solid var(--border);
+            padding: 10px;
+            margin-top: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .event-log .timestamp {
+            color: var(--text);
+            opacity: 0.5;
+        }
+        .event-log .event-ok {
+            color: var(--accent-bright);
+        }
+        .event-log .event-warn {
+            color: var(--warn-bright);
+        }
+        .event-log .event-error {
+            color: var(--danger-bright);
+        }
+
+        /* ── ТОСТЫ ── */
+        .toast {
+            position: fixed;
+            top: calc(var(--safe-top) + 60px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            color: var(--accent-bright);
+            padding: 12px 20px;
+            font-family: var(--font-mono);
+            font-size: var(--font-size-sm);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            z-index: 300;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.error {
+            border-color: var(--danger);
+            color: var(--danger-bright);
+        }
+        .toast.warn {
+            border-color: var(--warn);
+            color: var(--warn-bright);
+        }
+
+        /* ── ПРОЧЕЕ ── */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin: 8px 0;
+        }
+        .setting-chip {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        .setting-chip:active,
+        .setting-chip.active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent-bright);
+        }
+
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-xs {
+            font-size: 0.6rem;
+        }
+        .opacity-70 {
+            opacity: 0.7;
+        }
+        .letter-spacing-1 {
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ЭКРАН ЗАГРУЗКИ -->
+    <div class="boot-screen" id="bootScreen">
+        <div class="boot-header">СЭТ-4</div>
+        <div class="boot-subtitle">«СВЕТЛЯЧОК»</div>
+        <div class="boot-lines" id="bootLines"></div>
+        <div class="boot-progress"><div class="boot-progress-bar" id="bootProgressBar"></div></div>
+        <div class="boot-ready" id="bootReady">СИСТЕМА ГОТОВА</div>
+    </div>
+
+    <!-- ПОМЕХИ -->
+    <div class="glitch-line"></div>
+    <div class="glitch-line"></div>
+    <div class="glitch-line"></div>
+
+    <!-- СТРОКА СОСТОЯНИЯ -->
+    <div class="status-bar">
+        <div>
+            <div class="title" id="headerTitle" ontouchstart="startLongPress(event)" ontouchend="endLongPress(event)" onclick="openModal('eventlog')">СЭТ-4</div>
+            <div class="subtitle">«СВЕТЛЯЧОК»</div>
+        </div>
+        <div class="status-indicators">
+            <div class="indicator"><div class="indicator-label">БАТ</div><div class="indicator-value ok" id="hdrBat">--%</div></div>
+            <div class="indicator"><div class="indicator-label">ЗАПАС</div><div class="indicator-value" id="hdrRange">--</div></div>
+            <div class="indicator"><div class="indicator-label">СВЯЗЬ</div><div class="indicator-value" id="hdrConn">НЕТ</div></div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНАЯ ОБЛАСТЬ -->
+    <div class="main-area" id="mainArea">
+        <!-- Мнемосхема -->
+        <div class="mnemo-container" id="mnemoContainer" onclick="openModal('details')">
+            <div class="mnemo-frame">
+                <div class="mnemo-header">
+                    <span class="mnemo-icon" id="mnemoIcon">⛔</span>
+                    <span class="mnemo-title">СЭТ-4 «СВЕТЛЯЧОК»</span>
+                </div>
+                <div class="mnemo-body">
+                    <div class="mnemo-deck" id="mnemoDeck"><div class="mnemo-deck-inner"></div></div>
+                    <div class="mnemo-wheels">
+                        <div class="mnemo-wheel"></div>
+                        <div class="mnemo-wheel"></div>
+                    </div>
+                    <div class="mnemo-motion" id="mnemoMotion">━━━━━━━</div>
+                </div>
+                <div class="mnemo-status locked" id="mnemoStatus">БЛОКИРОВКА</div>
+                <div class="mnemo-info">
+                    <span>БАТ: <b id="mnemoBat">--%</b></span>
+                    <span>ЗАПАС: <b id="mnemoRange">-- КМ</b></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки -->
+        <div class="action-grid">
+            <button class="action-btn primary" id="btnLock" onclick="handleLock()">
+                <span class="icon">⏻</span><span class="label">ПУСК</span><span class="sub" id="btnLockSub">РАЗБЛОКИРОВАТЬ</span>
+            </button>
+            <button class="action-btn" id="btnMode" onclick="handleMode()">
+                <span class="icon">⚙</span><span class="label">РЕЖИМ</span><span class="sub" id="btnModeSub">СПОРТ</span>
+            </button>
+            <button class="action-btn" id="btnLight" onclick="handleLight()">
+                <span class="icon">💡</span><span class="label">СВЕТ</span><span class="sub" id="btnLightSub">ВЫКЛ</span>
+            </button>
+            <button class="action-btn" id="btnSound" onclick="handleSound()">
+                <span class="icon">🔊</span><span class="label">ЗВУК</span><span class="sub" id="btnSoundSub">ВКЛ</span>
+            </button>
+            <button class="action-btn warn" onclick="sendCmd('find_scooter')">
+                <span class="icon">🔍</span><span class="label">ПОИСК</span><span class="sub">НАЙТИ</span>
+            </button>
+            <button class="action-btn" onclick="sendCmd('toggle_limit')">
+                <span class="icon">📏</span><span class="label">ЛИМИТ</span><span class="sub">ПЕРЕКЛ.</span>
+            </button>
+        </div>
+
+        <!-- Свайп -->
+        <div class="swipe-panel" id="swipePanel">
+            <div class="swipe-label" id="swipeLabel">ЗАБЛОКИРОВАНО</div>
+            <div class="swipe-track" id="swipeTrack">
+                <div class="swipe-fill" id="swipeFill"></div>
+                <div class="swipe-handle" id="swipeHandle">▶</div>
+            </div>
+            <div class="swipe-hint" id="swipeHint">СДВИНЬТЕ ВПРАВО ДЛЯ РАЗБЛОКИРОВКИ</div>
+        </div>
+    </div>
+
+    <!-- НИЖНЯЯ НАВИГАЦИЯ -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" id="navDetails" onclick="openModal('details')"><span class="nav-icon">📋</span>ДЕТАЛИ</button>
+        <button class="nav-btn" id="navDiagnostic" onclick="openModal('diagnostic')"><span class="nav-icon">🔧</span>ДИАГН.</button>
+        <button class="nav-btn" id="navSettings" onclick="openModal('settings')"><span class="nav-icon">🎛</span>НАСТР.</button>
+        <button class="nav-btn" id="navStats" onclick="openModal('stats')"><span class="nav-icon">📈</span>СТАТ.</button>
+        <button class="nav-btn" id="navResearch" onclick="openModal('research')"><span class="nav-icon">🔬</span>ИССЛ.</button>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal" id="modalContent"></div>
+    </div>
+
+    <!-- ТОСТ -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ══════════════════════════════════════════
+        // ЗВУКОВОЙ ДВИЖОК
+        // ══════════════════════════════════════════
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playBeep(freq = 800, dur = 0.08, type = 'square', vol = 0.08) {
+            if (!audioCtx) return;
+            try {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = type;
+                o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                g.gain.setValueAtTime(vol, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                o.connect(g);
+                g.connect(audioCtx.destination);
+                o.start();
+                o.stop(audioCtx.currentTime + dur);
+            } catch (e) {}
+        }
+
+        function playClick() { playBeep(600, 0.04, 'square', 0.05); }
+
+        function playConfirm() { playBeep(1000, 0.06, 'square', 0.07);
+            setTimeout(() => playBeep(1200, 0.06, 'square', 0.07), 80); }
+
+        function playError() { playBeep(200, 0.2, 'sawtooth', 0.06);
+            setTimeout(() => playBeep(150, 0.3, 'sawtooth', 0.05), 150); }
+
+        function playSwipeProgress(p) { playBeep(400 + p * 600, 0.03, 'sine', 0.03); }
+
+        function playBootLine() { playBeep(300 + Math.random() * 200, 0.03, 'sine', 0.02); }
+
+        function playBootComplete() { playBeep(800, 0.08, 'square', 0.06);
+            setTimeout(() => playBeep(1000, 0.08, 'square', 0.06), 100);
+            setTimeout(() => playBeep(1200, 0.12, 'square', 0.07), 200); }
+
+        // ══════════════════════════════════════════
+        // ЖУРНАЛ СОБЫТИЙ
+        // ══════════════════════════════════════════
+        let eventLog = [];
+
+        function addEvent(msg, type = 'ok') {
+            const now = new Date();
+            const time = now.toTimeString().slice(0, 8);
+            eventLog.unshift({ time, msg, type });
+            if (eventLog.length > 100) eventLog.pop();
+        }
+
+        function getEventLogHTML() {
+            if (eventLog.length === 0) return 'ЖУРНАЛ ПУСТ';
+            return eventLog.map(e =>
+                `<span class="timestamp">[${e.time}]</span> <span class="event-${e.type}">${e.msg}</span>`
+            ).join('\n');
+        }
+
+        // ══════════════════════════════════════════
+        // НОЧНОЙ РЕЖИМ (долгое нажатие на заголовок)
+        // ══════════════════════════════════════════
+        let longPressTimer = null;
+        let longPressTriggered = false;
+
+        function startLongPress(e) {
+            longPressTriggered = false;
+            longPressTimer = setTimeout(() => {
+                longPressTriggered = true;
+                document.body.classList.toggle('night-mode');
+                const isNight = document.body.classList.contains('night-mode');
+                addEvent(isNight ? 'РЕЖИМ: НОЧНОЙ ОПЕРАТОР' : 'РЕЖИМ: ДНЕВНОЙ', 'warn');
+                showToast(isNight ? 'НОЧНОЙ РЕЖИМ АКТИВЕН' : 'ДНЕВНОЙ РЕЖИМ АКТИВЕН', 'warn');
+                if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+                playConfirm();
+            }, 800);
+        }
+
+        function endLongPress(e) {
+            clearTimeout(longPressTimer);
+            // Если было долгое нажатие — не открываем журнал событий
+            if (longPressTriggered) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // ЭКРАН ЗАГРУЗКИ
+        // ══════════════════════════════════════════
+        function initBootScreen() {
+            const bootLines = [
+                'ЗАГРУЗКА СЭТ-4 «СВЕТЛЯЧОК»...',
+                'ПРОВЕРКА ПАМЯТИ...........',
+                'ИНИЦИАЛИЗАЦИЯ ШИНЫ.......',
+                'ПОИСК УСТРОЙСТВА.........',
+                'ЗАПУСК ИНТЕРФЕЙСА........',
+                'КАЛИБРОВКА ДАТЧИКОВ......',
+                'ПРОВЕРКА СВЯЗИ...........',
+            ];
+            const container = document.getElementById('bootLines');
+            const progressBar = document.getElementById('bootProgressBar');
+            const bootReady = document.getElementById('bootReady');
+            const bootScreen = document.getElementById('bootScreen');
+
+            bootScreen.style.opacity = '1';
+            bootScreen.style.visibility = 'visible';
+            bootScreen.style.display = 'flex';
+
+            let lineIndex = 0;
+            let progress = 0;
+            const totalLines = bootLines.length;
+            const progressPerLine = 100 / totalLines;
+
+            function addLine() {
+                if (lineIndex < totalLines) {
+                    const line = document.createElement('div');
+                    line.className = 'boot-line';
+                    const isLast = lineIndex === totalLines - 1;
+                    const isOk = isLast || Math.random() > 0.1;
+                    const status = isOk ? '<span class="ok">ОК</span>' : '<span class="fail">ОШИБКА</span>';
+                    line.innerHTML = bootLines[lineIndex] + status;
+                    container.appendChild(line);
+                    if (isOk) playBootLine();
+                    else playBeep(200, 0.1, 'sawtooth', 0.04);
+                    progress += progressPerLine;
+                    progressBar.style.width = progress + '%';
+                    lineIndex++;
+                    setTimeout(addLine, 250 + Math.random() * 200);
+                } else {
+                    progressBar.style.width = '100%';
+                    bootReady.classList.add('show');
+                    playBootComplete();
+                    addEvent('СИСТЕМА ЗАГРУЖЕНА', 'ok');
+                    setTimeout(() => {
+                        bootScreen.classList.add('fade-out');
+                        initAudio();
+                        setTimeout(() => {
+                            if (bootScreen.parentNode) bootScreen.parentNode.removeChild(bootScreen);
+                        }, 500);
+                    }, 800);
+                }
+            }
+            setTimeout(addLine, 300);
+        }
+
+        // ══════════════════════════════════════════
+        // ЭФФЕКТ ПОМЕХ
+        // ══════════════════════════════════════════
+        function initGlitchEffect() {
+            function triggerGlitch() {
+                if (Math.random() < 0.3) {
+                    document.body.classList.add('screen-shake');
+                    setTimeout(() => document.body.classList.remove('screen-shake'), 150);
+                }
+                setTimeout(triggerGlitch, 8000 + Math.random() * 12000);
+            }
+            setTimeout(triggerGlitch, 10000);
+        }
+
+        // ══════════════════════════════════════════
+        // СОСТОЯНИЕ
+        // ══════════════════════════════════════════
+        let state = {
+            battery: 85,
+            range: 18,
+            temperature: 32,
+            speed: 0,
+            isLocked: true,
+            isCharging: false,
+            mode: 'sport',
+            headlight: false,
+            sound: true,
+            cruise: false,
+            speedLimit: 30,
+            connected: true,
+            errorCode: 0,
+            driveVoltage: 36.4,
+            motorCurrent: 2.1,
+            power: 76,
+            avgSpeed: 18,
+            bodyTemp: 38,
+            bat1Temp: 35,
+            bat2Temp: 34,
+            mosTemp: 42,
+            battery1: 85,
+            battery2: 0,
+            predictedRange: 16,
+            singleMileage: 2.4,
+            singleRideTime: 8,
+            totalOperationTime: 156,
+            totalRideTime: 12.5,
+            reg51: '0x00A0',
+            reg52: '0x0000',
+            reg56: '0x0001',
+            reg80: '0x0001',
+            rideHistory: [0, 5, 12, 18, 22, 25, 28, 25, 20, 22, 25, 28, 30, 25, 18],
+        };
+        let autoRefreshInterval = null;
+        let scanActive = false;
+        let scanProgress = 0;
+        let scanInterval = null;
+
+        // ══════════════════════════════════════════
+        // ИНИЦИАЛИЗАЦИЯ
+        // ══════════════════════════════════════════
+        function init() {
+            initBootScreen();
+            initGlitchEffect();
+            initSwipe();
+            loadStatus();
+            startAutoRefresh();
+            updateUI();
+            addEvent('ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА', 'ok');
+        }
+        document.addEventListener('DOMContentLoaded', init);
+
+        // ══════════════════════════════════════════
+        // API
+        // ══════════════════════════════════════════
+        async function loadStatus() {
+            try {
+                const [statusRes, dataRes] = await Promise.all([
+                    fetch('/status').catch(() => null),
+                    fetch('/data').catch(() => null)
+                ]);
+                if (statusRes && statusRes.ok) {
+                    const d = await statusRes.json();
+                    state.connected = d.success || false;
+                    if (d.isLocked !== undefined) state.isLocked = d.isLocked;
+                    if (d.isCharging !== undefined) state.isCharging = d.isCharging;
+                }
+                if (dataRes && dataRes.ok) {
+                    const d = await dataRes.json();
+                    state.battery = d.battery ?? state.battery;
+                    state.range = d.actualRange ?? d.range ?? state.range;
+                    state.temperature = d.temperature ?? state.temperature;
+                    state.speed = d.speed ?? state.speed;
+                    state.isCharging = d.isCharging ?? state.isCharging;
+                    state.errorCode = d.errorCode ?? state.errorCode;
+                    state.driveVoltage = d.driveVoltage ?? state.driveVoltage;
+                    state.motorCurrent = d.motorCurrent ?? state.motorCurrent;
+                    state.power = d.power ?? state.power;
+                    state.avgSpeed = d.avgSpeed ?? state.avgSpeed;
+                    state.bodyTemp = d.bodyTemp ?? state.bodyTemp;
+                    state.bat1Temp = d.bat1Temp ?? state.bat1Temp;
+                    state.bat2Temp = d.bat2Temp ?? state.bat2Temp;
+                    state.mosTemp = d.mosTemp ?? state.mosTemp;
+                    state.battery1 = d.battery1 ?? state.battery;
+                    state.battery2 = d.battery2 ?? state.battery2;
+                    state.predictedRange = d.predictedRange ?? state.predictedRange;
+                    state.singleMileage = d.singleMileage ?? state.singleMileage;
+                    state.singleRideTime = d.singleRideTime ?? state.singleRideTime;
+                    state.totalOperationTime = d.totalOperationTime ?? state.totalOperationTime;
+                    state.totalRideTime = d.totalRideTime ?? state.totalRideTime;
+                    state.reg51 = d.register0x51 ?? state.reg51;
+                    state.reg52 = d.register0x52 ?? state.reg52;
+                    state.reg56 = d.register0x56 ?? state.reg56;
+                    state.reg80 = d.register0x80 ?? state.reg80;
+                    if (d.speedLimit) state.speedLimit = d.speedLimit;
+                    if (d.headlight !== undefined) state.headlight = d.headlight;
+                    if (d.sound !== undefined || d.beep !== undefined) state.sound = d.sound ?? d.beep ?? state.sound;
+                    if (d.cruise !== undefined) state.cruise = d.cruise;
+                    if (d.mode) state.mode = d.mode;
+                }
+            } catch (e) {}
+            updateUI();
+        }
+
+        async function sendCmd(cmd) {
+            initAudio();
+            playClick();
+            addEvent('КОМАНДА: ' + cmd.toUpperCase(), 'ok');
+            try {
+                if (navigator.vibrate) navigator.vibrate(20);
+                const res = await fetch('/' + cmd);
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message || 'КОМАНДА ВЫПОЛНЕНА');
+                    playConfirm();
+                } else {
+                    showToast(data.message || 'ОШИБКА', 'error');
+                    playError();
+                    addEvent('ОШИБКА: ' + (data.message || cmd), 'error');
+                }
+                setTimeout(loadStatus, 400);
+            } catch (e) {
+                showToast('НЕТ СВЯЗИ', 'error');
+                playError();
+                emulateCommand(cmd);
+            }
+        }
+
+        function emulateCommand(cmd) {
+            switch (cmd) {
+                case 'unlock':
+                    state.isLocked = false;
+                    break;
+                case 'lock':
+                    state.isLocked = true;
+                    state.speed = 0;
+                    break;
+                case 'mode_eco':
+                    state.mode = 'eco';
+                    state.speedLimit = 15;
+                    break;
+                case 'mode_normal':
+                    state.mode = 'normal';
+                    state.speedLimit = 20;
+                    break;
+                case 'mode_sport':
+                    state.mode = 'sport';
+                    state.speedLimit = 30;
+                    break;
+                case 'headlight_toggle':
+                    state.headlight = !state.headlight;
+                    break;
+                case 'beep_toggle':
+                    state.sound = !state.sound;
+                    break;
+                case 'cruise_toggle':
+                    state.cruise = !state.cruise;
+                    break;
+                case 'toggle_limit':
+                    const limits = [15, 20, 25, 30];
+                    const ci = limits.indexOf(state.speedLimit);
+                    state.speedLimit = limits[(ci + 1) % limits.length];
+                    break;
+            }
+            updateUI();
+            playConfirm();
+            addEvent('ЭМУЛЯЦИЯ: ' + cmd.toUpperCase(), 'warn');
+            showToast('КОМАНДА ВЫПОЛНЕНА (ЭМУЛЯЦИЯ)');
+        }
+
+        function handleLock() { initAudio();
+            sendCmd(state.isLocked ? 'unlock' : 'lock'); if (navigator.vibrate) navigator.vibrate([30, 50, 30]); }
+
+        function handleMode() { const m = ['eco', 'normal', 'sport'];
+            sendCmd('mode_' + m[(m.indexOf(state.mode) + 1) % 3]); }
+
+        function handleLight() { sendCmd('headlight_toggle'); }
+
+        function handleSound() { sendCmd('beep_toggle'); }
+
+        function setLedMode(mode) { initAudio();
+            playClick();
+            fetch('/led_mode?mode=' + mode).catch(() => {}); }
+
+        function setSpeedLimit(v) { state.speedLimit = parseInt(v);
+            updateUI();
+            fetch('/speed_' + v).catch(() => {}); }
+
+        // ══════════════════════════════════════════
+        // СВАЙП
+        // ══════════════════════════════════════════
+        function initSwipe() {
+            const h = document.getElementById('swipeHandle');
+            const t = document.getElementById('swipeTrack');
+            const f = document.getElementById('swipeFill');
+            let d = false,
+                sx = 0,
+                cx = 0,
+                mx = 0,
+                lp = 0;
+
+            function um() { mx = t.offsetWidth - h.offsetWidth; }
+            h.addEventListener('touchstart', function(e) { e.preventDefault();
+                initAudio();
+                um();
+                d = true;
+                sx = e.touches[0].clientX;
+                h.style.transition = 'none';
+                f.style.transition = 'none';
+                lp = 0; });
+            h.addEventListener('touchmove', function(e) { if (!d) return;
+                e.preventDefault();
+                cx = Math.max(0, Math.min(e.touches[0].clientX - sx, mx));
+                h.style.left = cx + 'px';
+                const p = cx / mx;
+                f.style.width = (p * 100) + '%'; if (Math.floor(p * 10) > Math.floor(lp * 10)) playSwipeProgress(p);
+                lp = p;
+                h.classList.toggle('ready', cx > mx * 0.6); });
+            h.addEventListener('touchend', function() { if (!d) return;
+                d = false;
+                h.style.transition = 'left 0.3s ease, background 0.3s ease';
+                f.style.transition = 'width 0.3s ease'; if (cx > mx * 0.7) { playConfirm();
+                    handleLock(); }
+                h.style.left = '0px';
+                f.style.width = '0%';
+                h.classList.remove('ready'); });
+            window.addEventListener('resize', um);
+            um();
+        }
+
+        // ══════════════════════════════════════════
+        // UI
+        // ══════════════════════════════════════════
+        function updateUI() {
+            const be = document.getElementById('hdrBat');
+            be.textContent = state.battery + '%';
+            be.className = 'indicator-value ' + (state.battery <= 10 ? 'danger' : state.battery <= 25 ? 'warn' : 'ok');
+            document.getElementById('hdrRange').textContent = state.range + ' КМ';
+            const ce = document.getElementById('hdrConn');
+            ce.textContent = state.connected ? 'ОК' : 'НЕТ';
+            ce.className = 'indicator-value ' + (state.connected ? 'ok' : 'danger');
+            updateMnemo();
+            const sp = document.getElementById('swipePanel');
+            const sl = document.getElementById('swipeLabel');
+            const sh = document.getElementById('swipeHint');
+            const sH = document.getElementById('swipeHandle');
+            if (state.isLocked) { sp.classList.remove('unlocked');
+                sl.textContent = 'ЗАБЛОКИРОВАНО';
+                sh.textContent = 'СДВИНЬТЕ ВПРАВО ДЛЯ РАЗБЛОКИРОВКИ';
+                sH.style.background = 'var(--danger)'; } else { sp.classList.add('unlocked');
+                sl.textContent = 'РАЗБЛОКИРОВАНО';
+                sh.textContent = 'СДВИНЬТЕ ВПРАВО ДЛЯ БЛОКИРОВКИ';
+                sH.style.background = 'var(--accent)'; }
+            const bl = document.getElementById('btnLock');
+            bl.querySelector('.label').textContent = state.isLocked ? 'ПУСК' : 'СТОП';
+            bl.querySelector('.sub').textContent = state.isLocked ? 'РАЗБЛОКИРОВАТЬ' : 'ЗАБЛОКИРОВАТЬ';
+            bl.className = 'action-btn ' + (state.isLocked ? 'primary' : 'danger');
+            document.getElementById('btnModeSub').textContent = state.mode === 'sport' ? 'СПОРТ' : state.mode ===
+                'normal' ? 'НОРМА' : 'ЭКО';
+            document.getElementById('btnLightSub').textContent = state.headlight ? 'ВКЛ' : 'ВЫКЛ';
+            document.getElementById('btnSoundSub').textContent = state.sound ? 'ВКЛ' : 'ВЫКЛ';
+            if (document.getElementById('modalOverlay').classList.contains('active')) {
+                const cm = document.getElementById('modalContent').dataset.modalType; if (cm) renderModal(cm);
+            }
+        }
+
+        function updateMnemo() {
+            const icon = document.getElementById('mnemoIcon');
+            const deck = document.getElementById('mnemoDeck');
+            const wheels = document.querySelectorAll('.mnemo-wheel');
+            const motion = document.getElementById('mnemoMotion');
+            const status = document.getElementById('mnemoStatus');
+            document.getElementById('mnemoBat').textContent = state.battery + '%';
+            document.getElementById('mnemoRange').textContent = state.range + ' КМ';
+            deck.className = 'mnemo-deck';
+            motion.className = 'mnemo-motion';
+            status.className = 'mnemo-status';
+            icon.className = 'mnemo-icon';
+            wheels.forEach(w => w.className = 'mnemo-wheel');
+            if (state.errorCode > 0) { icon.textContent = '⚠';
+                icon.classList.add('danger-icon');
+                deck.classList.add('error');
+                status.classList.add('error-status');
+                status.textContent = 'ОШИБКА: ' + String(state.errorCode).padStart(4, '0'); } else if (state
+                .isCharging) { icon.textContent = '⚡';
+                icon.classList.add('warn-icon');
+                deck.classList.add('charging');
+                status.classList.add('charging-status');
+                status.textContent = 'ЗАРЯДКА ' + state.battery + '%'; } else if (!state.isLocked && state.speed >
+                0) { icon.textContent = '▶';
+                icon.classList.add('ok-icon');
+                deck.classList.add('moving');
+                wheels.forEach(w => w.classList.add('spinning'));
+                motion.classList.add('active');
+                motion.textContent = '→ ' + state.speed + ' КМ/Ч →';
+                status.classList.add('unlocked');
+                status.textContent = 'ДВИЖЕНИЕ'; } else if (!state.isLocked) { icon.textContent = '✅';
+                icon.classList.add('ok-icon');
+                status.classList.add('unlocked');
+                status.textContent = 'ГОТОВ'; } else { icon.textContent = '⛔';
+                icon.classList.add('danger-icon');
+                status.classList.add('locked');
+                status.textContent = 'БЛОКИРОВКА'; }
+        }
+
+        // ══════════════════════════════════════════
+        // ГРАФИК
+        // ══════════════════════════════════════════
+        function generateRideChart() {
+            const h = state.rideHistory; if (!h || h.length === 0) return 'НЕТ ДАННЫХ';
+            const mx = Math.max(...h, 30);
+            const ht = 10;
+            let c = 'СКОРОСТЬ (КМ/Ч)\n  ' + '─'.repeat(h.length * 2 + 2) + '\n';
+            for (let r = ht; r >= 0; r--) {
+                const sp = Math.round(mx * r / ht);
+                let l = (sp % 10 === 0 || r === 0 || r === ht) ? String(sp).padStart(2, ' ') + '│' : '  │';
+                for (let i = 0; i < h.length; i++) { const bh = Math.round(h[i] / mx * ht); if (bh >= r) l +=
+                        '██';
+                    else if (bh === r - 1 && h[i] > 0) l += '▄▄';
+                    else l += '  '; }
+                c += l + '\n';
+            }
+            c += '  └' + '─'.repeat(h.length * 2) + '\n   ';
+            return c;
+        }
+
+        // ══════════════════════════════════════════
+        // МОДАЛЬНЫЕ ОКНА
+        // ══════════════════════════════════════════
+        function openModal(type) { initAudio();
+            playClick();
+            document.getElementById('modalOverlay').classList.add('active');
+            document.getElementById('modalContent').dataset.modalType = type; if (navigator.vibrate) navigator.vibrate(
+            15);
+            renderModal(type);
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            const nm = { details: 'navDetails', diagnostic: 'navDiagnostic', settings: 'navSettings', stats: 'navStats',
+                research: 'navResearch', eventlog: 'navEventlog' }; if (nm[type]) document.getElementById(nm[type])
+                .classList.add('active'); }
+
+        function closeModal() { initAudio();
+            playClick();
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); }
+
+        function renderModal(type) {
+            const ct = document.getElementById('modalContent');
+            let html = '';
+            switch (type) {
+                case 'eventlog':
+                    html = `<div class="modal-header"><span class="modal-title">📜 ЖУРНАЛ СОБЫТИЙ</span><button class="modal-close" onclick="closeModal()">← НАЗАД</button></div>
+                <div class="event-log">${getEventLogHTML()}</div>`;
+                    break;
+                case 'details':
+                    html = `<div class="modal-header"><span class="modal-title">📋 ДЕТАЛИ</span><button class="modal-close" onclick="closeModal()">←</button></div>
+                ${['НАПРЯЖЕНИЕ', 'ТОК', 'МОЩНОСТЬ', 'СР. СКОРОСТЬ'].map((l, i) => `<div class="modal-row"><span class="label">${l}:</span><span class="value">${[state.driveVoltage+' В', state.motorCurrent+' А', state.power+' Вт', state.avgSpeed+' КМ/Ч'][i]}</span></div>`).join('')}
+                <div class="modal-btn-row"><button class="modal-btn" onclick="loadDiagnostics()">🔧 ДИАГН.</button><button class="modal-btn" onclick="sendCmd('reboot');closeModal();">🔄 СБРОС</button></div>`;
+                    break;
+                case 'diagnostic':
+                    const ok = state.errorCode === 0 ? 5 : 4;
+                    html = `<div class="modal-header"><span class="modal-title">🔧 ДИАГНОСТИКА</span><button class="modal-close" onclick="closeModal()">←</button></div>
+                <div class="text-center mb-8 text-xs">САМОДИАГНОСТИКА</div>
+                <div style="height:6px;background:#1a1a1a;margin:8px 0;border:1px solid var(--border);"><div style="height:100%;width:${ok*20}%;background:var(--accent);"></div></div>
+                ${['ДВИГАТЕЛЬ','БАТАРЕЯ','КОНТРОЛЛЕР','ДАТЧИКИ','СВЯЗЬ'].map(l => `<div class="modal-row"><span class="label">${l}:</span><span class="value ok">✓ В НОРМЕ</span></div>`).join('')}
+                <div class="modal-btn-row"><button class="modal-btn" onclick="loadDiagnostics()">🔄 ПОВТОР</button><button class="modal-btn" onclick="closeModal()">OK</button></div>`;
+                    break;
+                case 'settings':
+                    html = `<div class="modal-header"><span class="modal-title">🎛 НАСТРОЙКИ</span><button class="modal-close" onclick="closeModal()">←</button></div>
+                <div class="settings-grid">${['ВЫКЛ','ДЫХАНИЕ','РАДУГА','МЕРЦАНИЕ','ПОЛИЦИЯ-1','ПОЛИЦИЯ-2'].map((n,i) => `<button class="setting-chip" onclick="setLedMode(${[0,1,2,5,7,8][i]})">${n}</button>`).join('')}</div>
+                <div class="text-xs mt-12 mb-8">ЛИМИТ: <span style="color:var(--accent-bright)">${state.speedLimit} КМ/Ч</span></div>
+                <input type="range" min="15" max="30" value="${state.speedLimit}" step="5" oninput="setSpeedLimit(this.value)" style="width:100%;accent-color:var(--accent);">
+                <button class="setting-chip" style="width:100%;margin-top:12px;" onclick="sendCmd('cruise_toggle')">⏱️ КРУИЗ: ${state.cruise?'ВКЛ':'ВЫКЛ'}</button>
+                <button class="modal-btn" style="width:100%;margin-top:8px;" onclick="closeModal()">ГОТОВО</button>`;
+                    break;
+                case 'stats':
+                    html = `<div class="modal-header"><span class="modal-title">📈 СТАТИСТИКА</span><button class="modal-close" onclick="closeModal()">←</button></div>
+                <div class="modal-row"><span class="label">ПРОБЕГ:</span><span class="value">${state.singleMileage} КМ</span></div>
+                <div class="modal-row"><span class="label">ВРЕМЯ:</span><span class="value">${state.singleRideTime} МИН</span></div>
+                <div class="text-xs mt-12 mb-8">ГРАФИК СКОРОСТИ</div>
+                <div class="ride-chart">${generateRideChart()}</div>
+                <button class="modal-btn" style="width:100%;margin-top:12px;" onclick="closeModal()">OK</button>`;
+                    break;
+                case 'research':
+                    html = `<div class="modal-header"><span class="modal-title">🔬 ИССЛЕДОВАНИЕ</span><button class="modal-close" onclick="closeModal()">←</button></div>
+                <div style="height:6px;background:#1a1a1a;margin:8px 0;border:1px solid var(--border);"><div id="scanBar" style="height:100%;width:${scanProgress}%;background:var(--accent);"></div></div>
+                <div class="text-center text-xs mb-8" id="scanStatus">${scanActive?'СКАНИРОВАНИЕ...':'ГОТОВ'}</div>
+                <div class="modal-btn-row" style="grid-template-columns:1fr 1fr 1fr;">
+                <button class="modal-btn" onclick="startScan()">▶</button><button class="modal-btn" onclick="stopScan()">⏹</button><button class="modal-btn" onclick="resetScan()">↺</button></div>
+                ${['0x51 (ГАЗ)','0x52 (ТОРМОЗ)','0x56','0x80 (ФАРА)'].map((l,i) => `<div class="modal-row"><span class="label">${l}:</span><span class="value">${[state.reg51,state.reg52,state.reg56,state.reg80][i]}</span></div>`).join('')}
+                <div style="display:flex;gap:6px;margin-top:12px;"><input id="manualIndex" placeholder="ИНДЕКС" style="flex:1;background:#0a0a0a;border:1px solid var(--border);color:var(--text);padding:10px;font-family:var(--font-mono);"><input id="manualValue" placeholder="ЗНАЧ." style="flex:1;background:#0a0a0a;border:1px solid var(--border);color:var(--text);padding:10px;font-family:var(--font-mono);"></div>
+                <button class="modal-btn" style="width:100%;margin-top:8px;" onclick="testRegister()">🧪 ТЕСТ</button>`;
+                    break;
+            }
+            ct.innerHTML = html;
+        }
+
+        function startScan() { if (scanActive) return;
+            scanActive = true;
+            scanProgress = 0;
+            showToast('СКАНИРОВАНИЕ');
+            updateScanUI();
+            scanInterval = setInterval(() => { scanProgress += 3; if (scanProgress >= 100) { scanProgress = 100;
+                    stopScan();
+                    showToast('ЗАВЕРШЕНО');
+                    playConfirm(); }
+                updateScanUI(); }, 80); }
+
+        function stopScan() { scanActive = false; if (scanInterval) clearInterval(scanInterval);
+            scanInterval = null;
+            updateScanUI(); }
+
+        function resetScan() { stopScan();
+            scanProgress = 0;
+            updateScanUI(); }
+
+        function updateScanUI() { const b = document.getElementById('scanBar'); const s = document.getElementById(
+                'scanStatus'); if (b) b.style.width = scanProgress + '%'; if (s) s.textContent = scanActive ?
+                'СКАНИРОВАНИЕ... ' + Math.round(scanProgress / 100 * 256) + '/256' : 'ГОТОВ'; }
+
+        function testRegister() { const idx = document.getElementById('manualIndex')?.value || ''; if (!idx) { showToast(
+                'ВВЕДИТЕ ИНДЕКС', 'error'); return; }
+            showToast('ТЕСТ ' + idx); }
+
+        function showToast(m, t = '') { const el = document.getElementById('toast');
+            el.textContent = m;
+            el.className = 'toast ' + t + ' show';
+            clearTimeout(el._t);
+            el._t = setTimeout(() => el.classList.remove('show'), 2500); }
+
+        function startAutoRefresh() { if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(loadStatus, 3000); }
+        // Жесты
+        (function() { const ma = document.getElementById('mainArea');
+            let sy = 0;
+            ma.addEventListener('touchstart', function(e) { if (e.target.closest('button') || e.target.closest(
+                    '.swipe-track') || e.target.closest('.mnemo-container')) return;
+                sy = e.touches[0].clientY; });
+            ma.addEventListener('touchend', function(e) { if (e.target.closest('button') || e.target.closest(
+                    '.swipe-track') || e.target.closest('.mnemo-container')) return; const dy = e.changedTouches[0]
+                    .clientY - sy; if (Math.abs(dy) > 40) { if (dy < -30) openModal('diagnostic'); if (dy > 30)
+                        openModal('settings'); } }); })();
+    </script>
+</body>
+</html>
